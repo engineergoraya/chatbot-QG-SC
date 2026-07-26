@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+pydantic
+psycopg2-binary
+sqlparse
+python-dotenv
+openai
+langgraph
+langchain-core
+pypdf
+scikit-learn
+openpyxl

@@ -1,0 +1,53 @@
+{
+  "meta": {
+    "organization": "Qadri Group",
+    "purpose": "Machine-readable business dictionary for the AI Supply Chain Assistant. Load into the RAG store and/or expose to LangGraph tools so term->field->logic mappings are deterministic.",
+    "as_of": "2026-07-24",
+    "currency": "PKR",
+    "value_rules": {
+      "inventory_value": "SUM(stock.available_amount)  -- never qty*price",
+      "consumption_value": "SUM(issuance.total_pric)      -- never qty*unit_price",
+      "purchase_value": "SUM(purchase.amount)",
+      "supplier_delay_days": "purchase.purchase_date - purchase.required_date  (>0 = late)",
+      "logistics_delay_days": "logistics.actual_arrival - logistics.eta  (>0 = late)"
+    },
+    "branches": {
+      "Qadri Engineering (Pvt) Ltd.": ["QE", "QEN"],
+      "Qadcast (Pvt) Ltd.": ["QCL"],
+      "Qadbros Engineering (Pvt) Ltd.": ["QB2", "QBL"],
+      "Qadri Brothers (Pvt.) Ltd. (Unit-II)": ["QB2-II", "Unit-II"]
+    }
+  },
+  "terms": [
+    {"term": "Available Stock", "department": "Stores", "meaning": "Usable inventory on hand.", "fields": ["stock.available_qty", "stock.available_amount"], "example_question": "How much X can we issue?", "interpretation": "Use available_qty (usable), not stock_qty (physical total)."},
+    {"term": "Hold Stock", "department": "Stores", "meaning": "Blocked / reserved quantity, not usable.", "fields": ["stock.hold_qty"], "example_question": "Why can't I issue X?", "interpretation": "hold_qty>0 explains why available < physical."},
+    {"term": "Inventory Value", "department": "Stores", "meaning": "Financial worth of usable stock.", "fields": ["stock.available_amount"], "example_question": "What is our stock worth?", "interpretation": "SUM(available_amount). Never recompute qty*price."},
+    {"term": "Reorder Level", "department": "Stores/Intelligence", "meaning": "Minimum stock before replenishing.", "fields": ["stock.reorder_level", "ab_items.reorder_level"], "example_question": "What needs reordering?", "interpretation": "Flag where available_qty < reorder_level."},
+    {"term": "Critical Item", "department": "Stores/Intelligence", "meaning": "High risk of stockout.", "fields": ["ab_items.is_critical"], "example_question": "Which items are critical?", "interpretation": "43 items in AB Critical sheet; combine with lead_time."},
+    {"term": "Safety Stock", "department": "Intelligence", "meaning": "Buffer stock to absorb demand/lead-time variability.", "fields": ["ab_items.safety_stock", "ab_items.safety_days"], "example_question": "How much buffer for X?", "interpretation": "Compare on-hand to safety_stock."},
+    {"term": "Stock Health", "department": "Intelligence", "meaning": "Stock-days coverage ratio (higher = healthier).", "fields": ["ab_items.stock_health"], "example_question": "Is X healthy?", "interpretation": "Low/zero -> reorder or critical."},
+    {"term": "Consumption", "department": "Issuance", "meaning": "Material issued from stores to departments/machines/jobs.", "fields": ["issuance.total_pric"], "example_question": "What did dept X consume?", "interpretation": "SUM(total_pric); never recompute quantity*unit_price."},
+    {"term": "TotalPric", "department": "Issuance", "meaning": "Authoritative issued value of a line.", "fields": ["issuance.total_pric"], "example_question": "Value of issues?", "interpretation": "Use as-is; do not recompute."},
+    {"term": "Purchase Value", "department": "Purchase", "meaning": "Value bought via purchase orders.", "fields": ["purchase.amount"], "example_question": "What did we spend?", "interpretation": "SUM(amount)."},
+    {"term": "Supplier Delay", "department": "Purchase", "meaning": "Delivery late relative to required date.", "fields": ["purchase.purchase_date", "purchase.required_date"], "example_question": "Which suppliers are late?", "interpretation": "purchase_date - required_date; positive = late."},
+    {"term": "Lead Time", "department": "Purchase/Import", "meaning": "Time from requirement to delivery.", "fields": ["purchase.lead_time", "ab_items.lead_time_days"], "example_question": "How long to get X?", "interpretation": "Longer lead time -> higher stockout risk."},
+    {"term": "MOP", "department": "Purchase", "meaning": "Mode of payment (On Credit / By Cash / On Advance).", "fields": ["purchase.mop"], "example_question": "How was this PO paid?", "interpretation": "Cash-flow context."},
+    {"term": "LC", "department": "Imports", "meaning": "Letter of Credit; bank payment guarantee to foreign supplier.", "fields": ["import.lc_status"], "example_question": "LC status of shipment?", "interpretation": "Payment-instrument stage."},
+    {"term": "ALC / ELC", "department": "Imports", "meaning": "Amended / Established Letter of Credit.", "fields": ["import.alc_status", "import.alc_date"], "example_question": "ALC status?", "interpretation": "Tracked in ALC Tracker."},
+    {"term": "On Water", "department": "Imports", "meaning": "Shipment at sea between origin and destination port.", "fields": ["import.current_status"], "example_question": "How many items are on water?", "interpretation": "COUNT where current_status = 'In Transit'."},
+    {"term": "Sailing", "department": "Imports / Logistics", "meaning": "CONTEXT-DEPENDENT vessel-departure status.", "fields": ["import.current_status", "logistics.sailing_date"], "example_question": "How many are sailing?", "interpretation": "Imports: inbound shipment at sea. Logistics: export vessel departed Karachi (sailing_date)."},
+    {"term": "Ready Awaiting Sailing", "department": "Imports", "meaning": "At origin port, vessel not yet departed.", "fields": ["import.current_status"], "example_question": "What's stuck at port?", "interpretation": "Distinct from On Water."},
+    {"term": "ETD / ETA", "department": "Imports/Logistics", "meaning": "Estimated Time of Departure / Arrival.", "fields": ["import.etd", "import.eta", "logistics.etd_karachi"], "example_question": "When does X arrive?", "interpretation": "Use latest ETA; slippage across ETA1..ETA4 = delay."},
+    {"term": "ETA Works", "department": "Imports", "meaning": "Expected arrival at the Qadri site after clearance.", "fields": ["import.eta_works"], "example_question": "When at our works?", "interpretation": "Post-port-clearance arrival."},
+    {"term": "BL", "department": "Logistics", "meaning": "Bill of Lading; carrier receipt & title.", "fields": ["logistics.bl_status"], "example_question": "Is the BL ready?", "interpretation": "Export document readiness."},
+    {"term": "GD", "department": "Logistics/Imports", "meaning": "Goods Declaration (customs filing).", "fields": ["import.gd_no", "logistics.gd_status"], "example_question": "Customs filed?", "interpretation": "Clearance progress."},
+    {"term": "POD", "department": "Logistics", "meaning": "Port of Discharge / destination port.", "fields": ["logistics.pod"], "example_question": "Where does it land?", "interpretation": "Destination port."},
+    {"term": "Incoterm", "department": "Logistics", "meaning": "Delivery/risk terms (CFR, FOB, etc.).", "fields": ["logistics.incoterm"], "example_question": "Who pays freight?", "interpretation": "Governs cost/risk split."},
+    {"term": "Requisition", "department": "Stores/Procurement", "meaning": "Internal demand raised for material.", "fields": ["requisition.*"], "example_question": "What's demanded?", "interpretation": "Pre-purchase demand signal."},
+    {"term": "Pending Quantity", "department": "Procurement", "meaning": "Requisitioned quantity not yet fulfilled.", "fields": ["requisition.pending_quantity"], "example_question": "What's outstanding?", "interpretation": ">0 = open demand."},
+    {"term": "Urgent Requirement", "department": "Procurement", "meaning": "Priority demand.", "fields": ["requisition.urgent"], "example_question": "Any urgent needs?", "interpretation": "Prioritise these lines."},
+    {"term": "Delay (Logistics)", "department": "Logistics", "meaning": "Late arrival of an export shipment.", "fields": ["logistics.actual_arrival", "logistics.eta"], "example_question": "Is shipment late?", "interpretation": "actual_arrival - eta; positive = late."},
+    {"term": "Branch", "department": "All", "meaning": "Legal entity / plant.", "fields": ["*.branch"], "example_question": "Show X for QCL.", "interpretation": "Map branch code <-> full name (see meta.branches)."},
+    {"term": "Job Number", "department": "Issuance/Logistics", "meaning": "Production/export job reference.", "fields": ["issuance.job_number", "logistics.job_no"], "example_question": "Cost of job X?", "interpretation": "Aggregate consumption/shipping by job."}
+  ]
+}

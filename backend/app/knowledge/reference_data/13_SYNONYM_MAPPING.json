@@ -1,0 +1,4421 @@
+{
+  "_meta": {
+    "organization": "Qadri Group",
+    "purpose": "Synonym map from employee phrasing to database terms + owning department. Used by the router to normalize questions before intent detection.",
+    "confidence_scale": "high = direct/unambiguous; medium = needs light context; low = ambiguous, may require clarification",
+    "total_entries": 735,
+    "as_of": "2026-07-24"
+  },
+  "synonyms": {
+    "20 foot": {
+      "meaning": "Container details of a shipment",
+      "database_term": "logistics_shipment.containers_desc",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "40 foot": {
+      "meaning": "Container details of a shipment",
+      "database_term": "logistics_shipment.containers_desc",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "about to finish": {
+      "meaning": "High stockout-risk items",
+      "database_term": "ab_items.list_type='critical'",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "accounts & finance consumption": {
+      "meaning": "Consumption by Accounts & Finance",
+      "database_term": "issuance.department='Accounts & Finance'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "accounts & finance usage": {
+      "meaning": "Usage by Accounts & Finance",
+      "database_term": "issuance.department='Accounts & Finance'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "administration consumption": {
+      "meaning": "Consumption by Administration",
+      "database_term": "issuance.department='Administration'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "administration usage": {
+      "meaning": "Usage by Administration",
+      "database_term": "issuance.department='Administration'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "advance payment": {
+      "meaning": "Mode of payment on a PO",
+      "database_term": "purchase.mop",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "alc": {
+      "meaning": "Amended/Established Letter of Credit",
+      "database_term": "import_shipment.alc_status",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "alc amount": {
+      "meaning": "Amended/Established Letter of Credit",
+      "database_term": "import_shipment.alc_status",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "alc date": {
+      "meaning": "Amended/Established Letter of Credit",
+      "database_term": "import_shipment.alc_status",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "alc status": {
+      "meaning": "Amended/Established Letter of Credit",
+      "database_term": "import_shipment.alc_status",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "alc tracker": {
+      "meaning": "Amended/Established Letter of Credit",
+      "database_term": "import_shipment.alc_status",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "alloy": {
+      "meaning": "Item category (Raw Materials & Alloys)",
+      "database_term": "item_master.item_sub_group='Raw Materials & Alloys'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "amended lc": {
+      "meaning": "Amended/Established Letter of Credit",
+      "database_term": "import_shipment.alc_status",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "amount purchased": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "arrival at plant": {
+      "meaning": "Expected arrival at Qadri site after clearance",
+      "database_term": "import_shipment.eta_works",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "arrival at works": {
+      "meaning": "Expected arrival at Qadri site after clearance",
+      "database_term": "import_shipment.eta_works",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "arrival date": {
+      "meaning": "Estimated time of arrival / slippage",
+      "database_term": "import_shipment.eta / eta_1..eta_4",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "arrival estimate": {
+      "meaning": "Estimated time of arrival / slippage",
+      "database_term": "import_shipment.eta / eta_1..eta_4",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "arrival port": {
+      "meaning": "Port of discharge / destination",
+      "database_term": "logistics_shipment.pod",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "arrival time": {
+      "meaning": "Estimated time of arrival / slippage",
+      "database_term": "import_shipment.eta / eta_1..eta_4",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "arrived at works": {
+      "meaning": "Import shipment status 'Arrived at Works'",
+      "database_term": "import_shipment.current_status='Arrived at Works'",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "arriving shipment": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "at port waiting": {
+      "meaning": "At origin port, vessel not yet departed",
+      "database_term": "import_shipment.current_status='Ready Awaiting Sailing'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "at risk items": {
+      "meaning": "High stockout-risk items",
+      "database_term": "ab_items.list_type='critical'",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "at sea": {
+      "meaning": "Import shipment at sea (in transit)",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "available quantity": {
+      "meaning": "Usable inventory (physical minus held)",
+      "database_term": "stock.available_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "available stock": {
+      "meaning": "Usable inventory (physical minus held)",
+      "database_term": "stock.available_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "available value": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "average transit": {
+      "meaning": "Average transit time of export shipments",
+      "database_term": "logistics_shipment.transit_time",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "awaiting sailing": {
+      "meaning": "At origin port, vessel not yet departed",
+      "database_term": "import_shipment.current_status='Ready Awaiting Sailing'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "balance stock": {
+      "meaning": "Usable inventory (physical minus held)",
+      "database_term": "stock.available_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "ball bearing": {
+      "meaning": "Item category (Bearings)",
+      "database_term": "item_master.item_sub_group='Bearings'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "bank lc": {
+      "meaning": "Letter of Credit (import payment instrument)",
+      "database_term": "import_shipment.lc_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "bar": {
+      "meaning": "Item category (Bars & Structure Material)",
+      "database_term": "item_master.item_sub_group='Bars & Structure Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "bars": {
+      "meaning": "Item category (Bars & Structure Material)",
+      "database_term": "item_master.item_sub_group='Bars & Structure Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "bearing": {
+      "meaning": "Item category (Bearings)",
+      "database_term": "item_master.item_sub_group='Bearings'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "bearings": {
+      "meaning": "Item category (Bearings)",
+      "database_term": "item_master.item_sub_group='Bearings'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "behind schedule supplier": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "being manufactured": {
+      "meaning": "Supplier still manufacturing the order",
+      "database_term": "import_shipment.current_status='Under Production'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "being produced": {
+      "meaning": "Supplier still manufacturing the order",
+      "database_term": "import_shipment.current_status='Under Production'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "below reorder": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "best supplier": {
+      "meaning": "Supplier reliability / delay ranking",
+      "database_term": "purchase (AVG delay, on-time %)",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "bill of lading": {
+      "meaning": "Bill of Lading document status",
+      "database_term": "logistics_shipment.bl_status",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "bill of lading status": {
+      "meaning": "Bill of Lading document status",
+      "database_term": "logistics_shipment.bl_status",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "bl": {
+      "meaning": "Bill of Lading document status",
+      "database_term": "logistics_shipment.bl_status",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "bl pending": {
+      "meaning": "Bill of Lading document status",
+      "database_term": "logistics_shipment.bl_status",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "bl ready": {
+      "meaning": "Bill of Lading document status",
+      "database_term": "logistics_shipment.bl_status",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "bl status": {
+      "meaning": "Bill of Lading document status",
+      "database_term": "logistics_shipment.bl_status",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "blocked inventory": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "blocked quantity": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "blocked stock": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "bolts": {
+      "meaning": "Item category (Hardware & Fittings)",
+      "database_term": "item_master.item_sub_group='Hardware & Fittings'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "boring section consumption": {
+      "meaning": "Consumption by Boring Section",
+      "database_term": "issuance.department='Boring Section'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "boring section usage": {
+      "meaning": "Usage by Boring Section",
+      "database_term": "issuance.department='Boring Section'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "branch transfer": {
+      "meaning": "Road transport / internal shifting",
+      "database_term": "logistics_shipment.transporter / truck_status",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "breaker": {
+      "meaning": "Item category (Electrical Items)",
+      "database_term": "item_master.item_sub_group='Electrical Items'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "buffer stock": {
+      "meaning": "Buffer to absorb demand/lead-time variability",
+      "database_term": "ab_items.safety_stock",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "burn rate": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "buy first": {
+      "meaning": "Prioritised procurement list",
+      "database_term": "ab_items+requisition+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "buying total": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "buying value": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "cable": {
+      "meaning": "Item category (Electrical Items)",
+      "database_term": "item_master.item_sub_group='Electrical Items'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "capital in stock": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "cargo on water": {
+      "meaning": "Import shipment at sea (in transit)",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "cash purchase": {
+      "meaning": "Mode of payment on a PO",
+      "database_term": "purchase.mop",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "casting unit": {
+      "meaning": "Branch / legal entity",
+      "database_term": "branch = 'Qadcast (Pvt) Ltd.'",
+      "department": "All",
+      "confidence": "high"
+    },
+    "category of item": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "cfr": {
+      "meaning": "Incoterm / delivery term",
+      "database_term": "logistics_shipment.incoterm",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "chemical": {
+      "meaning": "Item category (Chemicals)",
+      "database_term": "item_master.item_sub_group='Chemicals'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "chemicals": {
+      "meaning": "Item category (Chemicals)",
+      "database_term": "item_master.item_sub_group='Chemicals'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "china imports": {
+      "meaning": "Import origin-country concentration",
+      "database_term": "import_shipment.country",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "classify item": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "cleaner": {
+      "meaning": "Item category (Chemicals)",
+      "database_term": "item_master.item_sub_group='Chemicals'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "cnc machining consumption": {
+      "meaning": "Consumption by CNC Machining",
+      "database_term": "issuance.department='CNC Machining'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "cnc machining usage": {
+      "meaning": "Usage by CNC Machining",
+      "database_term": "issuance.department='CNC Machining'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "code of item": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "coming from abroad": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "committed stock": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "compare suppliers": {
+      "meaning": "Supplier reliability / delay ranking",
+      "database_term": "purchase (AVG delay, on-time %)",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "consumables": {
+      "meaning": "Item category (Workshop & General Items)",
+      "database_term": "item_master.item_sub_group='Workshop & General Items'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "consumed": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "consumption": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "consumption by department": {
+      "meaning": "Consumption grouped by department",
+      "database_term": "issuance.department + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "consumption by job": {
+      "meaning": "Consumption attributed to a production job",
+      "database_term": "issuance.job_number + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "consumption by machine": {
+      "meaning": "Consumption grouped by machine",
+      "database_term": "issuance.machine + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "consumption cost": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "consumption in rupees": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "consumption over time": {
+      "meaning": "Consumption trend over time",
+      "database_term": "issuance.from_date + total_pric",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "consumption pattern": {
+      "meaning": "Consumption trend over time",
+      "database_term": "issuance.from_date + total_pric",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "consumption trend": {
+      "meaning": "Consumption trend over time",
+      "database_term": "issuance.from_date + total_pric",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "consumption value": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "container": {
+      "meaning": "Container details of a shipment",
+      "database_term": "logistics_shipment.containers_desc",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "container status": {
+      "meaning": "Container details of a shipment",
+      "database_term": "logistics_shipment.containers_desc",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "container type": {
+      "meaning": "Container details of a shipment",
+      "database_term": "logistics_shipment.containers_desc",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "containers": {
+      "meaning": "Container details of a shipment",
+      "database_term": "logistics_shipment.containers_desc",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "cost of job": {
+      "meaning": "Consumption attributed to a production job",
+      "database_term": "issuance.job_number + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "cost of shipping": {
+      "meaning": "Shipping cost / cost per kg",
+      "database_term": "logistics_shipment.total_shipping_cost / nw_kgs",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "cost per kg": {
+      "meaning": "Shipping cost / cost per kg",
+      "database_term": "logistics_shipment.total_shipping_cost / nw_kgs",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "costing in process": {
+      "meaning": "Import shipment status 'Costing in Process'",
+      "database_term": "import_shipment.current_status='Costing in Process'",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "country dependency": {
+      "meaning": "Import origin-country concentration",
+      "database_term": "import_shipment.country",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "country risk": {
+      "meaning": "Import origin-country concentration",
+      "database_term": "import_shipment.country",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "coupla section consumption": {
+      "meaning": "Consumption by Coupla Section",
+      "database_term": "issuance.department='Coupla Section'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "coupla section usage": {
+      "meaning": "Usage by Coupla Section",
+      "database_term": "issuance.department='Coupla Section'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "coverage days": {
+      "meaning": "Stock-days coverage ratio",
+      "database_term": "ab_items.stock_health",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "credit purchase": {
+      "meaning": "Mode of payment on a PO",
+      "database_term": "purchase.mop",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "critical inventory": {
+      "meaning": "High stockout-risk items",
+      "database_term": "ab_items.list_type='critical'",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "critical items": {
+      "meaning": "High stockout-risk items",
+      "database_term": "ab_items.list_type='critical'",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "critical stock": {
+      "meaning": "High stockout-risk items",
+      "database_term": "ab_items.list_type='critical'",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "current available": {
+      "meaning": "Usable inventory (physical minus held)",
+      "database_term": "stock.available_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "current stock": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "currently sailing": {
+      "meaning": "CONTEXT-DEPENDENT vessel departure (imports=inbound / logistics=export)",
+      "database_term": "import_shipment.current_status / logistics_shipment.sailing_date",
+      "department": "Imports/Logistics",
+      "confidence": "low"
+    },
+    "customer shipment": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "customs declaration": {
+      "meaning": "Goods Declaration (customs)",
+      "database_term": "import_shipment.gd_no / logistics_shipment",
+      "department": "Logistics/Imports",
+      "confidence": "medium"
+    },
+    "customs filing": {
+      "meaning": "Goods Declaration (customs)",
+      "database_term": "import_shipment.gd_no / logistics_shipment",
+      "department": "Logistics/Imports",
+      "confidence": "medium"
+    },
+    "cutter": {
+      "meaning": "Item category (Cutting Tools)",
+      "database_term": "item_master.item_sub_group='Cutting Tools'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "cutting": {
+      "meaning": "Item category (Cutting Tools)",
+      "database_term": "item_master.item_sub_group='Cutting Tools'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "cutting oil": {
+      "meaning": "Item category (Lubricants)",
+      "database_term": "item_master.item_sub_group='Lubricants'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "cutting tools": {
+      "meaning": "Item category (Cutting Tools)",
+      "database_term": "item_master.item_sub_group='Cutting Tools'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "danger stock": {
+      "meaning": "High stockout-risk items",
+      "database_term": "ab_items.list_type='critical'",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "dashboard": {
+      "meaning": "Multi-domain summary",
+      "database_term": "all domains (master agent)",
+      "department": "Cross-functional",
+      "confidence": "low"
+    },
+    "days of stock": {
+      "meaning": "Stock-days coverage ratio",
+      "database_term": "ab_items.stock_health",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "delayed eta": {
+      "meaning": "Estimated time of arrival / slippage",
+      "database_term": "import_shipment.eta / eta_1..eta_4",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "delayed shipment": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "delayed supplier": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "delayed vendor": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "delivered requisition": {
+      "meaning": "Requisition in 'Delivered' status",
+      "database_term": "requisition.status='Delivered'",
+      "department": "Procurement",
+      "confidence": "medium"
+    },
+    "delivery delay": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "delivery duration": {
+      "meaning": "Time from requirement to delivery",
+      "database_term": "purchase.lead_time / ab_items.lead_time_days",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "delivery duration export": {
+      "meaning": "Average transit time of export shipments",
+      "database_term": "logistics_shipment.transit_time",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "delivery late": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "delivery term": {
+      "meaning": "Incoterm / delivery term",
+      "database_term": "logistics_shipment.incoterm",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "delivery time": {
+      "meaning": "Time from requirement to delivery",
+      "database_term": "purchase.lead_time / ab_items.lead_time_days",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "delivery to customer": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "delivery to works": {
+      "meaning": "Expected arrival at Qadri site after clearance",
+      "database_term": "import_shipment.eta_works",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "demand": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "demand list": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "demand pending": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "departed": {
+      "meaning": "Estimated time of departure",
+      "database_term": "import_shipment.etd",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "department consumption": {
+      "meaning": "Consumption grouped by department",
+      "database_term": "issuance.department + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "department usage": {
+      "meaning": "Consumption grouped by department",
+      "database_term": "issuance.department + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "department wise consumption": {
+      "meaning": "Consumption grouped by department",
+      "database_term": "issuance.department + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "departure date": {
+      "meaning": "Estimated time of departure",
+      "database_term": "import_shipment.etd",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "dependence on supplier": {
+      "meaning": "Composite supplier risk (delay+spend+critical supply)",
+      "database_term": "purchase+ab_items+import",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "depleting stock": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "dept consumption": {
+      "meaning": "Consumption grouped by department",
+      "database_term": "issuance.department + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "dept usage": {
+      "meaning": "Consumption grouped by department",
+      "database_term": "issuance.department + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "describe item": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "destination port": {
+      "meaning": "Port of discharge / destination",
+      "database_term": "logistics_shipment.pod",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "dispatch": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "dispatched": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "doc status": {
+      "meaning": "Export documentation completion",
+      "database_term": "logistics_shipment.docs_overall",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "docs complete": {
+      "meaning": "Export documentation completion",
+      "database_term": "logistics_shipment.docs_overall",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "docs pending": {
+      "meaning": "Export documentation completion",
+      "database_term": "logistics_shipment.docs_overall",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "docs status": {
+      "meaning": "Export documentation completion",
+      "database_term": "logistics_shipment.docs_overall",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "document completion": {
+      "meaning": "Export documentation completion",
+      "database_term": "logistics_shipment.docs_overall",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "documentation": {
+      "meaning": "Export documentation completion",
+      "database_term": "logistics_shipment.docs_overall",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "documentation completion": {
+      "meaning": "Export documentation completion",
+      "database_term": "logistics_shipment.docs_overall",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "earmarked stock": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "elc": {
+      "meaning": "Amended/Established Letter of Credit",
+      "database_term": "import_shipment.alc_status",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "electric": {
+      "meaning": "Item category (Electrical Items)",
+      "database_term": "item_master.item_sub_group='Electrical Items'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "electrical": {
+      "meaning": "Item category (Electrical Items)",
+      "database_term": "item_master.item_sub_group='Electrical Items'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "electrical consumption": {
+      "meaning": "Consumption by Electrical",
+      "database_term": "issuance.department='Electrical'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "electrical items": {
+      "meaning": "Item category (Electrical Items)",
+      "database_term": "item_master.item_sub_group='Electrical Items'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "electrical usage": {
+      "meaning": "Usage by Electrical",
+      "database_term": "issuance.department='Electrical'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "electrode": {
+      "meaning": "Item category (Weld Material)",
+      "database_term": "item_master.item_sub_group='Weld Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "electrodes": {
+      "meaning": "Item category (Weld Material)",
+      "database_term": "item_master.item_sub_group='Weld Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "end mill": {
+      "meaning": "Item category (Cutting Tools)",
+      "database_term": "item_master.item_sub_group='Cutting Tools'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "epoxy": {
+      "meaning": "Item category (Paint Materials)",
+      "database_term": "item_master.item_sub_group='Paint Materials'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "established lc": {
+      "meaning": "Amended/Established Letter of Credit",
+      "database_term": "import_shipment.alc_status",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "estimated arrival": {
+      "meaning": "Estimated time of arrival / slippage",
+      "database_term": "import_shipment.eta / eta_1..eta_4",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "estimated departure": {
+      "meaning": "Estimated time of departure",
+      "database_term": "import_shipment.etd",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "eta": {
+      "meaning": "Estimated time of arrival / slippage",
+      "database_term": "import_shipment.eta / eta_1..eta_4",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "eta change": {
+      "meaning": "Estimated time of arrival / slippage",
+      "database_term": "import_shipment.eta / eta_1..eta_4",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "eta delay": {
+      "meaning": "Estimated time of arrival / slippage",
+      "database_term": "import_shipment.eta / eta_1..eta_4",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "eta slippage": {
+      "meaning": "Estimated time of arrival / slippage",
+      "database_term": "import_shipment.eta / eta_1..eta_4",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "eta works": {
+      "meaning": "Expected arrival at Qadri site after clearance",
+      "database_term": "import_shipment.eta_works",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "etd": {
+      "meaning": "Estimated time of departure",
+      "database_term": "import_shipment.etd",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "everything about": {
+      "meaning": "Multi-domain summary",
+      "database_term": "all domains (master agent)",
+      "department": "Cross-functional",
+      "confidence": "low"
+    },
+    "expected arrival": {
+      "meaning": "Estimated time of arrival / slippage",
+      "database_term": "import_shipment.eta / eta_1..eta_4",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "expected shipment": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "export delay": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "export delivery": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "export documents": {
+      "meaning": "Export documentation completion",
+      "database_term": "logistics_shipment.docs_overall",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "export late": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "export order": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "export shipment": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "export status": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "export tracking": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "fabrication consumption": {
+      "meaning": "Consumption by Fabrication",
+      "database_term": "issuance.department='Fabrication'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "fabrication usage": {
+      "meaning": "Usage by Fabrication",
+      "database_term": "issuance.department='Fabrication'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "fcl": {
+      "meaning": "Container details of a shipment",
+      "database_term": "logistics_shipment.containers_desc",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "fetling consumption": {
+      "meaning": "Consumption by Fetling",
+      "database_term": "issuance.department='Fetling'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "fetling usage": {
+      "meaning": "Usage by Fetling",
+      "database_term": "issuance.department='Fetling'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "filter": {
+      "meaning": "Item category (Refractory Material)",
+      "database_term": "item_master.item_sub_group='Refractory Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "find item": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "fitter consumption": {
+      "meaning": "Consumption by Fitter",
+      "database_term": "issuance.department='Fitter'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "fitter usage": {
+      "meaning": "Usage by Fitter",
+      "database_term": "issuance.department='Fitter'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "fittings": {
+      "meaning": "Item category (Hardware & Fittings)",
+      "database_term": "item_master.item_sub_group='Hardware & Fittings'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "flat rack": {
+      "meaning": "Container details of a shipment",
+      "database_term": "logistics_shipment.containers_desc",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "floating stock": {
+      "meaning": "Import shipment at sea (in transit)",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "fob": {
+      "meaning": "Incoterm / delivery term",
+      "database_term": "logistics_shipment.incoterm",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "foreign country": {
+      "meaning": "Import origin-country concentration",
+      "database_term": "import_shipment.country",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "foreign shipment": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "foundry": {
+      "meaning": "Branch / legal entity",
+      "database_term": "branch = 'Qadcast (Pvt) Ltd.'",
+      "department": "All",
+      "confidence": "high"
+    },
+    "free quantity": {
+      "meaning": "Usable inventory (physical minus held)",
+      "database_term": "stock.available_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "free stock": {
+      "meaning": "Usable inventory (physical minus held)",
+      "database_term": "stock.available_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "freight": {
+      "meaning": "Shipping cost / cost per kg",
+      "database_term": "logistics_shipment.total_shipping_cost / nw_kgs",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "freight charges": {
+      "meaning": "Shipping cost / cost per kg",
+      "database_term": "logistics_shipment.total_shipping_cost / nw_kgs",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "freight cost": {
+      "meaning": "Shipping cost / cost per kg",
+      "database_term": "logistics_shipment.total_shipping_cost / nw_kgs",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "freight per kg": {
+      "meaning": "Shipping cost / cost per kg",
+      "database_term": "logistics_shipment.total_shipping_cost / nw_kgs",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "freight performance": {
+      "meaning": "Shipping cost / cost per kg",
+      "database_term": "logistics_shipment.total_shipping_cost / nw_kgs",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "freight rate": {
+      "meaning": "Shipping cost / cost per kg",
+      "database_term": "logistics_shipment.total_shipping_cost / nw_kgs",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "frozen stock": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "gatepass requisition": {
+      "meaning": "Requisition in 'GatePass' status",
+      "database_term": "requisition.status='GatePass'",
+      "department": "Procurement",
+      "confidence": "medium"
+    },
+    "gauge": {
+      "meaning": "Item category (Measuring Instruments)",
+      "database_term": "item_master.item_sub_group='Measuring Instruments'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "gd": {
+      "meaning": "Goods Declaration (customs)",
+      "database_term": "import_shipment.gd_no / logistics_shipment",
+      "department": "Logistics/Imports",
+      "confidence": "medium"
+    },
+    "gd number": {
+      "meaning": "Goods Declaration (customs)",
+      "database_term": "import_shipment.gd_no / logistics_shipment",
+      "department": "Logistics/Imports",
+      "confidence": "medium"
+    },
+    "gd status": {
+      "meaning": "Goods Declaration (customs)",
+      "database_term": "import_shipment.gd_no / logistics_shipment",
+      "department": "Logistics/Imports",
+      "confidence": "medium"
+    },
+    "general items": {
+      "meaning": "Item category (Workshop & General Items)",
+      "database_term": "item_master.item_sub_group='Workshop & General Items'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "give me a summary": {
+      "meaning": "Multi-domain summary",
+      "database_term": "all domains (master agent)",
+      "department": "Cross-functional",
+      "confidence": "low"
+    },
+    "goods arriving": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "goods coming": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "goods declaration": {
+      "meaning": "Goods Declaration (customs)",
+      "database_term": "import_shipment.gd_no / logistics_shipment",
+      "department": "Logistics/Imports",
+      "confidence": "medium"
+    },
+    "goods in stock": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "goods issued": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "goods on water": {
+      "meaning": "Import shipment at sea (in transit)",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "grease": {
+      "meaning": "Item category (Lubricants)",
+      "database_term": "item_master.item_sub_group='Lubricants'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "group status": {
+      "meaning": "Multi-domain summary",
+      "database_term": "all domains (master agent)",
+      "department": "Cross-functional",
+      "confidence": "low"
+    },
+    "hand tools": {
+      "meaning": "Item category (Power, Hand Tools & Accessories)",
+      "database_term": "item_master.item_sub_group='Power, Hand Tools & Accessories'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "hardware": {
+      "meaning": "Item category (Hardware & Fittings)",
+      "database_term": "item_master.item_sub_group='Hardware & Fittings'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "hardware items": {
+      "meaning": "Item category (Hardware & Fittings)",
+      "database_term": "item_master.item_sub_group='Hardware & Fittings'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "haulage cost": {
+      "meaning": "Shipping cost / cost per kg",
+      "database_term": "logistics_shipment.total_shipping_cost / nw_kgs",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "health of stock": {
+      "meaning": "Stock-days coverage ratio",
+      "database_term": "ab_items.stock_health",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "health safety": {
+      "meaning": "Item category (Health & Safety Items)",
+      "database_term": "item_master.item_sub_group='Health & Safety Items'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "held quantity": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "held stock": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "high risk items": {
+      "meaning": "High stockout-risk items",
+      "database_term": "ab_items.list_type='critical'",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "hold quantity": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "hold stock": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "holdings": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "how long delivery": {
+      "meaning": "Time from requirement to delivery",
+      "database_term": "purchase.lead_time / ab_items.lead_time_days",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "how long shipping": {
+      "meaning": "Average transit time of export shipments",
+      "database_term": "logistics_shipment.transit_time",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "how long to get": {
+      "meaning": "Time from requirement to delivery",
+      "database_term": "purchase.lead_time / ab_items.lead_time_days",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "how long will stock last": {
+      "meaning": "Stock-days coverage ratio",
+      "database_term": "ab_items.stock_health",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "how many containers": {
+      "meaning": "Container details of a shipment",
+      "database_term": "logistics_shipment.containers_desc",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "how many days stock": {
+      "meaning": "Stock-days coverage ratio",
+      "database_term": "ab_items.stock_health",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "how many on water": {
+      "meaning": "Import shipment at sea (in transit)",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "how many sailing": {
+      "meaning": "CONTEXT-DEPENDENT vessel departure (imports=inbound / logistics=export)",
+      "database_term": "import_shipment.current_status / logistics_shipment.sailing_date",
+      "department": "Imports/Logistics",
+      "confidence": "low"
+    },
+    "how much can i issue": {
+      "meaning": "Usable inventory (physical minus held)",
+      "database_term": "stock.available_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "how much consumed": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "how much did we buy": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "how much is our stock worth": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "how much stock": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "how much used": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "how was it paid": {
+      "meaning": "Mode of payment on a PO",
+      "database_term": "purchase.mop",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "import arriving": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "import coming": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "import country": {
+      "meaning": "Import origin-country concentration",
+      "database_term": "import_shipment.country",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "import status": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "import tracking": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "imports from china": {
+      "meaning": "Import origin-country concentration",
+      "database_term": "import_shipment.country",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "imports on water": {
+      "meaning": "Import shipment at sea (in transit)",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "in factory": {
+      "meaning": "Supplier still manufacturing the order",
+      "database_term": "import_shipment.current_status='Under Production'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "in the sea": {
+      "meaning": "Import shipment at sea (in transit)",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "in transit": {
+      "meaning": "Import shipment status 'In Transit'",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "in transit imports": {
+      "meaning": "Import shipment at sea (in transit)",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "in-transit shipment": {
+      "meaning": "Import shipment at sea (in transit)",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "incoming shipment": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "incoterm": {
+      "meaning": "Incoterm / delivery term",
+      "database_term": "logistics_shipment.incoterm",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "instock requisition": {
+      "meaning": "Requisition in 'InStock' status",
+      "database_term": "requisition.status='InStock'",
+      "department": "Procurement",
+      "confidence": "medium"
+    },
+    "instrument": {
+      "meaning": "Item category (Measuring Instruments)",
+      "database_term": "item_master.item_sub_group='Measuring Instruments'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "internal demand": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "internal shifting": {
+      "meaning": "Road transport / internal shifting",
+      "database_term": "logistics_shipment.transporter / truck_status",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "inventory": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "inventory amount": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "inventory in rupees": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "inventory value": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "inventory went up": {
+      "meaning": "Diagnose inventory change (in vs out)",
+      "database_term": "purchase vs issuance (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "ippc consumption": {
+      "meaning": "Consumption by IPPC",
+      "database_term": "issuance.department='IPPC'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "ippc usage": {
+      "meaning": "Usage by IPPC",
+      "database_term": "issuance.department='IPPC'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "is shipment late": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "issuable stock": {
+      "meaning": "Usable inventory (physical minus held)",
+      "database_term": "stock.available_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "issue quantity": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "issue value": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "issued from store": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "issued in rupees": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "issued items": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "issued material": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "issued quantity": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "issued requisition": {
+      "meaning": "Requisition in 'Issued' status",
+      "database_term": "requisition.status='Issued'",
+      "department": "Procurement",
+      "confidence": "medium"
+    },
+    "issued value": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "item category": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "item classification": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "item code": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "item detail": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "item details": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "item group": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "item id": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "item info": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "item information": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "item name": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "item number": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "item spec": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "item specification": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "item type": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "items at risk": {
+      "meaning": "High stockout-risk items",
+      "database_term": "ab_items.list_type='critical'",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "items below minimum": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "items may finish": {
+      "meaning": "High stockout-risk items",
+      "database_term": "ab_items.list_type='critical'",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "items on water": {
+      "meaning": "Import shipment at sea (in transit)",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "items running out": {
+      "meaning": "Stockout-risk items",
+      "database_term": "ab_items+stock+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "items sailing": {
+      "meaning": "CONTEXT-DEPENDENT vessel departure (imports=inbound / logistics=export)",
+      "database_term": "import_shipment.current_status / logistics_shipment.sailing_date",
+      "department": "Imports/Logistics",
+      "confidence": "low"
+    },
+    "items to prioritize": {
+      "meaning": "Prioritised procurement list",
+      "database_term": "ab_items+requisition+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "items to reorder": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "job consumption": {
+      "meaning": "Consumption attributed to a production job",
+      "database_term": "issuance.job_number + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "job cost": {
+      "meaning": "Consumption attributed to a production job",
+      "database_term": "issuance.job_number + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "job material cost": {
+      "meaning": "Consumption attributed to a production job",
+      "database_term": "issuance.job_number + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "job usage": {
+      "meaning": "Consumption attributed to a production job",
+      "database_term": "issuance.job_number + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "job wise consumption": {
+      "meaning": "Consumption attributed to a production job",
+      "database_term": "issuance.job_number + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "lab consumption": {
+      "meaning": "Consumption by LAB",
+      "database_term": "issuance.department='LAB'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "lab usage": {
+      "meaning": "Usage by LAB",
+      "database_term": "issuance.department='LAB'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "landing port": {
+      "meaning": "Port of discharge / destination",
+      "database_term": "logistics_shipment.pod",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "late arrival import": {
+      "meaning": "Estimated time of arrival / slippage",
+      "database_term": "import_shipment.eta / eta_1..eta_4",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "late delivery": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "late shipment": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "late supplier": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "late vendor": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "lathe section consumption": {
+      "meaning": "Consumption by Lathe Section",
+      "database_term": "issuance.department='Lathe Section'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "lathe section usage": {
+      "meaning": "Usage by Lathe Section",
+      "database_term": "issuance.department='Lathe Section'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "lc": {
+      "meaning": "Letter of Credit (import payment instrument)",
+      "database_term": "import_shipment.lc_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "lc details": {
+      "meaning": "Letter of Credit (import payment instrument)",
+      "database_term": "import_shipment.lc_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "lc in process": {
+      "meaning": "Import shipment status 'LC in Process'",
+      "database_term": "import_shipment.current_status='LC in Process'",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "lc opened": {
+      "meaning": "Letter of Credit (import payment instrument)",
+      "database_term": "import_shipment.lc_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "lc pending": {
+      "meaning": "Letter of Credit (import payment instrument)",
+      "database_term": "import_shipment.lc_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "lc process": {
+      "meaning": "Letter of Credit (import payment instrument)",
+      "database_term": "import_shipment.lc_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "lc status": {
+      "meaning": "Letter of Credit (import payment instrument)",
+      "database_term": "import_shipment.lc_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "lcl": {
+      "meaning": "Container details of a shipment",
+      "database_term": "logistics_shipment.containers_desc",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "lead days": {
+      "meaning": "Time from requirement to delivery",
+      "database_term": "purchase.lead_time / ab_items.lead_time_days",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "lead time": {
+      "meaning": "Time from requirement to delivery",
+      "database_term": "purchase.lead_time / ab_items.lead_time_days",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "letter of credit": {
+      "meaning": "Letter of Credit (import payment instrument)",
+      "database_term": "import_shipment.lc_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "local transport": {
+      "meaning": "Road transport / internal shifting",
+      "database_term": "logistics_shipment.transporter / truck_status",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "locked stock": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "logistics cost": {
+      "meaning": "Shipping cost / cost per kg",
+      "database_term": "logistics_shipment.total_shipping_cost / nw_kgs",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "low stock": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "lubricant": {
+      "meaning": "Item category (Lubricants)",
+      "database_term": "item_master.item_sub_group='Lubricants'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "lubricants": {
+      "meaning": "Item category (Lubricants)",
+      "database_term": "item_master.item_sub_group='Lubricants'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "machine accessories": {
+      "meaning": "Item category (Machine Accessories Mechanical)",
+      "database_term": "item_master.item_sub_group='Machine Accessories Mechanical'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "machine consumption": {
+      "meaning": "Consumption grouped by machine",
+      "database_term": "issuance.machine + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "machine parts": {
+      "meaning": "Item category (Machine Accessories Mechanical)",
+      "database_term": "item_master.item_sub_group='Machine Accessories Mechanical'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "machine usage": {
+      "meaning": "Consumption grouped by machine",
+      "database_term": "issuance.machine + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "machine wise consumption": {
+      "meaning": "Consumption grouped by machine",
+      "database_term": "issuance.machine + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "maintenance consumption": {
+      "meaning": "Consumption by Maintenance",
+      "database_term": "issuance.department='Maintenance'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "maintenance usage": {
+      "meaning": "Usage by Maintenance",
+      "database_term": "issuance.department='Maintenance'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "manufacturing": {
+      "meaning": "Supplier still manufacturing the order",
+      "database_term": "import_shipment.current_status='Under Production'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "marker": {
+      "meaning": "Item category (Stationary)",
+      "database_term": "item_master.item_sub_group='Stationary'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "material burn": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "material code": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "material coming": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "material consumption": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "material cost of job": {
+      "meaning": "Consumption attributed to a production job",
+      "database_term": "issuance.job_number + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "material demand": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "material issued": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "material on water": {
+      "meaning": "Import shipment at sea (in transit)",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "material shortage risk": {
+      "meaning": "Materials/suppliers threatening production",
+      "database_term": "ab_items+purchase+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "material standard": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "material usage": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "material used value": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "may go out of stock": {
+      "meaning": "Stockout-risk items",
+      "database_term": "ab_items+stock+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "measuring": {
+      "meaning": "Item category (Measuring Instruments)",
+      "database_term": "item_master.item_sub_group='Measuring Instruments'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "measuring instrument": {
+      "meaning": "Item category (Measuring Instruments)",
+      "database_term": "item_master.item_sub_group='Measuring Instruments'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "mechanical accessories": {
+      "meaning": "Item category (Machine Accessories Mechanical)",
+      "database_term": "item_master.item_sub_group='Machine Accessories Mechanical'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "melting consumption": {
+      "meaning": "Consumption by Melting",
+      "database_term": "issuance.department='Melting'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "melting usage": {
+      "meaning": "Usage by Melting",
+      "database_term": "issuance.department='Melting'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "metal scrap": {
+      "meaning": "Item category (Raw Materials & Alloys)",
+      "database_term": "item_master.item_sub_group='Raw Materials & Alloys'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "minimum buffer": {
+      "meaning": "Buffer to absorb demand/lead-time variability",
+      "database_term": "ab_items.safety_stock",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "minimum stock": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "mode of payment": {
+      "meaning": "Mode of payment on a PO",
+      "database_term": "purchase.mop",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "money in stock": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "money spent buying": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "monthly consumption": {
+      "meaning": "Consumption trend over time",
+      "database_term": "issuance.from_date + total_pric",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "monthly usage": {
+      "meaning": "Consumption trend over time",
+      "database_term": "issuance.from_date + total_pric",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "mop": {
+      "meaning": "Mode of payment on a PO",
+      "database_term": "purchase.mop",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "ms plate": {
+      "meaning": "Item category (Plate Material)",
+      "database_term": "item_master.item_sub_group='Plate Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "near stockout": {
+      "meaning": "High stockout-risk items",
+      "database_term": "ab_items.list_type='critical'",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "need to buy": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "need to reorder": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "net stock": {
+      "meaning": "Usable inventory (physical minus held)",
+      "database_term": "stock.available_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "not available stock": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "not sailed yet": {
+      "meaning": "At origin port, vessel not yet departed",
+      "database_term": "import_shipment.current_status='Ready Awaiting Sailing'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "nuts": {
+      "meaning": "Item category (Hardware & Fittings)",
+      "database_term": "item_master.item_sub_group='Hardware & Fittings'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "office supplies": {
+      "meaning": "Item category (Stationary)",
+      "database_term": "item_master.item_sub_group='Stationary'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "oil": {
+      "meaning": "Item category (Lubricants)",
+      "database_term": "item_master.item_sub_group='Lubricants'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "on hand": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "on ocean": {
+      "meaning": "Import shipment at sea (in transit)",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "on road": {
+      "meaning": "Import shipment status 'On Road'",
+      "database_term": "import_shipment.current_status='On Road'",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "on the water": {
+      "meaning": "Import shipment at sea (in transit)",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "on time delivery": {
+      "meaning": "Supplier reliability / delay ranking",
+      "database_term": "purchase (AVG delay, on-time %)",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "on water": {
+      "meaning": "Import shipment at sea (in transit)",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "open demand": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "open lc": {
+      "meaning": "Letter of Credit (import payment instrument)",
+      "database_term": "import_shipment.lc_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "open stock": {
+      "meaning": "Usable inventory (physical minus held)",
+      "database_term": "stock.available_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "open top": {
+      "meaning": "Container details of a shipment",
+      "database_term": "logistics_shipment.containers_desc",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "ordering time": {
+      "meaning": "Time from requirement to delivery",
+      "database_term": "purchase.lead_time / ab_items.lead_time_days",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "origin country": {
+      "meaning": "Import origin-country concentration",
+      "database_term": "import_shipment.country",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "out of stock risk": {
+      "meaning": "Stockout-risk items",
+      "database_term": "ab_items+stock+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "outgoing shipment": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "outsourcing requisition": {
+      "meaning": "Requisition in 'OutSourcing' status",
+      "database_term": "requisition.status='OutSourcing'",
+      "department": "Procurement",
+      "confidence": "medium"
+    },
+    "outstanding demand": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "overall status": {
+      "meaning": "Multi-domain summary",
+      "database_term": "all domains (master agent)",
+      "department": "Cross-functional",
+      "confidence": "low"
+    },
+    "overdue supplier": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "overseas shipment": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "overview": {
+      "meaning": "Multi-domain summary",
+      "database_term": "all domains (master agent)",
+      "department": "Cross-functional",
+      "confidence": "low"
+    },
+    "packaging": {
+      "meaning": "Item category (Packaging Material)",
+      "database_term": "item_master.item_sub_group='Packaging Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "packaging material": {
+      "meaning": "Item category (Packaging Material)",
+      "database_term": "item_master.item_sub_group='Packaging Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "packing material": {
+      "meaning": "Item category (Packaging Material)",
+      "database_term": "item_master.item_sub_group='Packaging Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "paid cash": {
+      "meaning": "Mode of payment on a PO",
+      "database_term": "purchase.mop",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "paid on credit": {
+      "meaning": "Mode of payment on a PO",
+      "database_term": "purchase.mop",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "paint": {
+      "meaning": "Item category (Paint Materials)",
+      "database_term": "item_master.item_sub_group='Paint Materials'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "paint material": {
+      "meaning": "Item category (Paint Materials)",
+      "database_term": "item_master.item_sub_group='Paint Materials'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "paperwork": {
+      "meaning": "Export documentation completion",
+      "database_term": "logistics_shipment.docs_overall",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "part number": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "partial issued requisition": {
+      "meaning": "Requisition in 'Partial Issued' status",
+      "database_term": "requisition.status='Partial Issued'",
+      "department": "Procurement",
+      "confidence": "medium"
+    },
+    "partialinstock requisition": {
+      "meaning": "Requisition in 'PartialInStock' status",
+      "database_term": "requisition.status='PartialInStock'",
+      "department": "Procurement",
+      "confidence": "medium"
+    },
+    "payment lc": {
+      "meaning": "Letter of Credit (import payment instrument)",
+      "database_term": "import_shipment.lc_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "payment mode": {
+      "meaning": "Mode of payment on a PO",
+      "database_term": "purchase.mop",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "payment type": {
+      "meaning": "Mode of payment on a PO",
+      "database_term": "purchase.mop",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "pen": {
+      "meaning": "Item category (Stationary)",
+      "database_term": "item_master.item_sub_group='Stationary'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "pending demand": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "pending items": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "pending quantity": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "pending requisition": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "penetrant": {
+      "meaning": "Item category (Chemicals)",
+      "database_term": "item_master.item_sub_group='Chemicals'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "physical stock": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "pipe": {
+      "meaning": "Item category (Pipe)",
+      "database_term": "item_master.item_sub_group='Pipe'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "pipes": {
+      "meaning": "Item category (Pipe)",
+      "database_term": "item_master.item_sub_group='Pipe'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "piping": {
+      "meaning": "Item category (Pipe)",
+      "database_term": "item_master.item_sub_group='Pipe'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "plate": {
+      "meaning": "Item category (Plate Material)",
+      "database_term": "item_master.item_sub_group='Plate Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "plate material": {
+      "meaning": "Item category (Plate Material)",
+      "database_term": "item_master.item_sub_group='Plate Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "plates": {
+      "meaning": "Item category (Plate Material)",
+      "database_term": "item_master.item_sub_group='Plate Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "po amount": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "po total": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "po value": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "pod": {
+      "meaning": "Port of discharge / destination",
+      "database_term": "logistics_shipment.pod",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "port of discharge": {
+      "meaning": "Port of discharge / destination",
+      "database_term": "logistics_shipment.pod",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "potential stockout": {
+      "meaning": "Stockout-risk items",
+      "database_term": "ab_items+stock+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "power tools": {
+      "meaning": "Item category (Power, Hand Tools & Accessories)",
+      "database_term": "item_master.item_sub_group='Power, Hand Tools & Accessories'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "ppe": {
+      "meaning": "Item category (Health & Safety Items)",
+      "database_term": "item_master.item_sub_group='Health & Safety Items'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "preparing requisition": {
+      "meaning": "Requisition in 'Preparing' status",
+      "database_term": "requisition.status='Preparing'",
+      "department": "Procurement",
+      "confidence": "medium"
+    },
+    "priority demand": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "priority procurement": {
+      "meaning": "Prioritised procurement list",
+      "database_term": "ab_items+requisition+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "procurement action": {
+      "meaning": "Prioritised procurement list",
+      "database_term": "ab_items+requisition+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "procurement priority": {
+      "meaning": "Prioritised procurement list",
+      "database_term": "ab_items+requisition+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "procurement spend": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "procurement time": {
+      "meaning": "Time from requirement to delivery",
+      "database_term": "purchase.lead_time / ab_items.lead_time_days",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "procurement value": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "procuring requisition": {
+      "meaning": "Requisition in 'Procuring' status",
+      "database_term": "requisition.status='Procuring'",
+      "department": "Procurement",
+      "confidence": "medium"
+    },
+    "production consumption": {
+      "meaning": "Consumption by Production",
+      "database_term": "issuance.department='Production'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "production impact": {
+      "meaning": "Materials/suppliers threatening production",
+      "database_term": "ab_items+purchase+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "production risk": {
+      "meaning": "Materials/suppliers threatening production",
+      "database_term": "ab_items+purchase+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "production risk suppliers": {
+      "meaning": "Composite supplier risk (delay+spend+critical supply)",
+      "database_term": "purchase+ab_items+import",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "production usage": {
+      "meaning": "Usage by Production",
+      "database_term": "issuance.department='Production'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "purchase amount": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "purchase cost": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "purchase in rupees": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "purchase total": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "purchase value": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "qadbros": {
+      "meaning": "Branch / legal entity",
+      "database_term": "branch = 'Qadbros Engineering (Pvt) Ltd.'",
+      "department": "All",
+      "confidence": "high"
+    },
+    "qadbros engineering": {
+      "meaning": "Branch / legal entity",
+      "database_term": "branch = 'Qadbros Engineering (Pvt) Ltd.'",
+      "department": "All",
+      "confidence": "high"
+    },
+    "qadcast": {
+      "meaning": "Branch / legal entity",
+      "database_term": "branch = 'Qadcast (Pvt) Ltd.'",
+      "department": "All",
+      "confidence": "high"
+    },
+    "qadri brothers": {
+      "meaning": "Branch / legal entity",
+      "database_term": "branch = 'Qadri Brothers (Pvt.) Ltd. (Unit-II)'",
+      "department": "All",
+      "confidence": "high"
+    },
+    "qadri engineering": {
+      "meaning": "Branch / legal entity",
+      "database_term": "branch = 'Qadri Engineering (Pvt) Ltd.'",
+      "department": "All",
+      "confidence": "high"
+    },
+    "qb2": {
+      "meaning": "Branch / legal entity",
+      "database_term": "branch = 'Qadbros Engineering (Pvt) Ltd.'",
+      "department": "All",
+      "confidence": "high"
+    },
+    "qb2-ii": {
+      "meaning": "Branch / legal entity",
+      "database_term": "branch = 'Qadri Brothers (Pvt.) Ltd. (Unit-II)'",
+      "department": "All",
+      "confidence": "high"
+    },
+    "qbl": {
+      "meaning": "Branch / legal entity",
+      "database_term": "branch = 'Qadbros Engineering (Pvt) Ltd.'",
+      "department": "All",
+      "confidence": "high"
+    },
+    "qcl": {
+      "meaning": "Branch / legal entity",
+      "database_term": "branch = 'Qadcast (Pvt) Ltd.'",
+      "department": "All",
+      "confidence": "high"
+    },
+    "qe": {
+      "meaning": "Branch / legal entity",
+      "database_term": "branch = 'Qadri Engineering (Pvt) Ltd.'",
+      "department": "All",
+      "confidence": "high"
+    },
+    "qe 2": {
+      "meaning": "Branch / legal entity",
+      "database_term": "branch = 'Qadri Engineering – Unit II'",
+      "department": "All",
+      "confidence": "high"
+    },
+    "qe-ii": {
+      "meaning": "Branch / legal entity",
+      "database_term": "branch = 'Qadri Engineering – Unit II'",
+      "department": "All",
+      "confidence": "high"
+    },
+    "qen": {
+      "meaning": "Branch / legal entity",
+      "database_term": "branch = 'Qadri Engineering (Pvt) Ltd.'",
+      "department": "All",
+      "confidence": "high"
+    },
+    "quality assurance consumption": {
+      "meaning": "Consumption by Quality Assurance",
+      "database_term": "issuance.department='Quality Assurance'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "quality assurance usage": {
+      "meaning": "Usage by Quality Assurance",
+      "database_term": "issuance.department='Quality Assurance'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "quantity in stock": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "rank suppliers": {
+      "meaning": "Supplier reliability / delay ranking",
+      "database_term": "purchase (AVG delay, on-time %)",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "raw material": {
+      "meaning": "Item category (Raw Materials & Alloys)",
+      "database_term": "item_master.item_sub_group='Raw Materials & Alloys'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "raw materials": {
+      "meaning": "Item category (Raw Materials & Alloys)",
+      "database_term": "item_master.item_sub_group='Raw Materials & Alloys'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "re-order": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "reaching works": {
+      "meaning": "Expected arrival at Qadri site after clearance",
+      "database_term": "import_shipment.eta_works",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "ready awaiting sailing": {
+      "meaning": "Import shipment status 'Ready Awaiting Sailing'",
+      "database_term": "import_shipment.current_status='Ready Awaiting Sailing'",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "ready stock": {
+      "meaning": "Usable inventory (physical minus held)",
+      "database_term": "stock.available_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "ready to sail": {
+      "meaning": "At origin port, vessel not yet departed",
+      "database_term": "import_shipment.current_status='Ready Awaiting Sailing'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "reefer": {
+      "meaning": "Container details of a shipment",
+      "database_term": "logistics_shipment.containers_desc",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "refractory": {
+      "meaning": "Item category (Refractory Material)",
+      "database_term": "item_master.item_sub_group='Refractory Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "refractory material": {
+      "meaning": "Item category (Refractory Material)",
+      "database_term": "item_master.item_sub_group='Refractory Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "reliable suppliers": {
+      "meaning": "Supplier reliability / delay ranking",
+      "database_term": "purchase (AVG delay, on-time %)",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "remaining stock": {
+      "meaning": "Usable inventory (physical minus held)",
+      "database_term": "stock.available_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "reorder": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "reorder items": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "reorder level": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "replenish": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "required material": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "requisition": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "requisition status": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "reserve level": {
+      "meaning": "Buffer to absorb demand/lead-time variability",
+      "database_term": "ab_items.safety_stock",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "reserved inventory": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "reserved quantity": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "reserved stock": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "rising consumption": {
+      "meaning": "Consumption trend over time",
+      "database_term": "issuance.from_date + total_pric",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "risk to production": {
+      "meaning": "Materials/suppliers threatening production",
+      "database_term": "ab_items+purchase+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "risky items": {
+      "meaning": "High stockout-risk items",
+      "database_term": "ab_items.list_type='critical'",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "risky suppliers": {
+      "meaning": "Composite supplier risk (delay+spend+critical supply)",
+      "database_term": "purchase+ab_items+import",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "road transport": {
+      "meaning": "Road transport / internal shifting",
+      "database_term": "logistics_shipment.transporter / truck_status",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "round bar": {
+      "meaning": "Item category (Bars & Structure Material)",
+      "database_term": "item_master.item_sub_group='Bars & Structure Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "running low": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "safety": {
+      "meaning": "Item category (Health & Safety Items)",
+      "database_term": "item_master.item_sub_group='Health & Safety Items'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "safety days": {
+      "meaning": "Buffer to absorb demand/lead-time variability",
+      "database_term": "ab_items.safety_stock",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "safety items": {
+      "meaning": "Item category (Health & Safety Items)",
+      "database_term": "item_master.item_sub_group='Health & Safety Items'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "safety level": {
+      "meaning": "Buffer to absorb demand/lead-time variability",
+      "database_term": "ab_items.safety_stock",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "safety shoes": {
+      "meaning": "Item category (Health & Safety Items)",
+      "database_term": "item_master.item_sub_group='Health & Safety Items'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "safety stock": {
+      "meaning": "Buffer to absorb demand/lead-time variability",
+      "database_term": "ab_items.safety_stock",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "sailing": {
+      "meaning": "CONTEXT-DEPENDENT vessel departure (imports=inbound / logistics=export)",
+      "database_term": "import_shipment.current_status / logistics_shipment.sailing_date",
+      "department": "Imports/Logistics",
+      "confidence": "low"
+    },
+    "sailing date import": {
+      "meaning": "Estimated time of departure",
+      "database_term": "import_shipment.etd",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "sailing shipments": {
+      "meaning": "CONTEXT-DEPENDENT vessel departure (imports=inbound / logistics=export)",
+      "database_term": "import_shipment.current_status / logistics_shipment.sailing_date",
+      "department": "Imports/Logistics",
+      "confidence": "low"
+    },
+    "scrap": {
+      "meaning": "Item category (Raw Materials & Alloys)",
+      "database_term": "item_master.item_sub_group='Raw Materials & Alloys'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "sea shipment": {
+      "meaning": "Import shipment at sea (in transit)",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "search item": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "shifting between branches": {
+      "meaning": "Road transport / internal shifting",
+      "database_term": "logistics_shipment.transporter / truck_status",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "ship sailing": {
+      "meaning": "CONTEXT-DEPENDENT vessel departure (imports=inbound / logistics=export)",
+      "database_term": "import_shipment.current_status / logistics_shipment.sailing_date",
+      "department": "Imports/Logistics",
+      "confidence": "low"
+    },
+    "shipment arriving": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "shipment at sea": {
+      "meaning": "Import shipment at sea (in transit)",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "shipment coming": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "shipment delay": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "shipment location": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "shipment on water": {
+      "meaning": "Import shipment at sea (in transit)",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "shipment overdue": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "shipment sailing": {
+      "meaning": "CONTEXT-DEPENDENT vessel departure (imports=inbound / logistics=export)",
+      "database_term": "import_shipment.current_status / logistics_shipment.sailing_date",
+      "department": "Imports/Logistics",
+      "confidence": "low"
+    },
+    "shipment status": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "shipment to customer": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "shipping charges": {
+      "meaning": "Shipping cost / cost per kg",
+      "database_term": "logistics_shipment.total_shipping_cost / nw_kgs",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "shipping cost": {
+      "meaning": "Shipping cost / cost per kg",
+      "database_term": "logistics_shipment.total_shipping_cost / nw_kgs",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "shipping delay": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "shipping docs": {
+      "meaning": "Export documentation completion",
+      "database_term": "logistics_shipment.docs_overall",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "shipping term": {
+      "meaning": "Incoterm / delivery term",
+      "database_term": "logistics_shipment.incoterm",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "shipping time": {
+      "meaning": "Average transit time of export shipments",
+      "database_term": "logistics_shipment.transit_time",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "short stock": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "single supplier risk": {
+      "meaning": "Composite supplier risk (delay+spend+critical supply)",
+      "database_term": "purchase+ab_items+import",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "sleeve": {
+      "meaning": "Item category (Refractory Material)",
+      "database_term": "item_master.item_sub_group='Refractory Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "slow supplier": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "sourced requisition": {
+      "meaning": "Requisition in 'Sourced' status",
+      "database_term": "requisition.status='Sourced'",
+      "department": "Procurement",
+      "confidence": "medium"
+    },
+    "sourcing requisition": {
+      "meaning": "Requisition in 'Sourcing' status",
+      "database_term": "requisition.status='Sourcing'",
+      "department": "Procurement",
+      "confidence": "medium"
+    },
+    "spanner": {
+      "meaning": "Item category (Power, Hand Tools & Accessories)",
+      "database_term": "item_master.item_sub_group='Power, Hand Tools & Accessories'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "spare stock": {
+      "meaning": "Usable inventory (physical minus held)",
+      "database_term": "stock.available_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "spec": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "specification": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "spend": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "spend concentration": {
+      "meaning": "Composite supplier risk (delay+spend+critical supply)",
+      "database_term": "purchase+ab_items+import",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "spend value": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "stationary": {
+      "meaning": "Item category (Stationary)",
+      "database_term": "item_master.item_sub_group='Stationary'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "stationery": {
+      "meaning": "Item category (Stationary)",
+      "database_term": "item_master.item_sub_group='Stationary'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "status report": {
+      "meaning": "Multi-domain summary",
+      "database_term": "all domains (master agent)",
+      "department": "Cross-functional",
+      "confidence": "low"
+    },
+    "still in production": {
+      "meaning": "Supplier still manufacturing the order",
+      "database_term": "import_shipment.current_status='Under Production'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "stock": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock amount": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock available": {
+      "meaning": "Usable inventory (physical minus held)",
+      "database_term": "stock.available_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock blocked": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock count": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock cover": {
+      "meaning": "Stock-days coverage ratio",
+      "database_term": "ab_items.stock_health",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock coverage": {
+      "meaning": "Stock-days coverage ratio",
+      "database_term": "ab_items.stock_health",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock days": {
+      "meaning": "Stock-days coverage ratio",
+      "database_term": "ab_items.stock_health",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock getting low": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock health": {
+      "meaning": "Stock-days coverage ratio",
+      "database_term": "ab_items.stock_health",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock i can use": {
+      "meaning": "Usable inventory (physical minus held)",
+      "database_term": "stock.available_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock in pkr": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock in rupees": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock in store": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock left": {
+      "meaning": "Usable inventory (physical minus held)",
+      "database_term": "stock.available_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock level": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock on hand": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock on hold": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock on water": {
+      "meaning": "Import shipment at sea (in transit)",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "stock position": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock quantity": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock running out": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock shortage": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock status": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock valuation": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock value": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stock value up": {
+      "meaning": "Diagnose inventory change (in vs out)",
+      "database_term": "purchase vs issuance (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "stock worth": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "stockout": {
+      "meaning": "Stockout-risk items",
+      "database_term": "ab_items+stock+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "stockout risk": {
+      "meaning": "High stockout-risk items",
+      "database_term": "ab_items.list_type='critical'",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "store consumption": {
+      "meaning": "Consumption by Store",
+      "database_term": "issuance.department='Store'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "store issuance": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "store requisition": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "store stock": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "store usage": {
+      "meaning": "Usage by Store",
+      "database_term": "issuance.department='Store'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "stores issue": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "structural": {
+      "meaning": "Item category (Bars & Structure Material)",
+      "database_term": "item_master.item_sub_group='Bars & Structure Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "structure": {
+      "meaning": "Item category (Bars & Structure Material)",
+      "database_term": "item_master.item_sub_group='Bars & Structure Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "stuck at origin": {
+      "meaning": "At origin port, vessel not yet departed",
+      "database_term": "import_shipment.current_status='Ready Awaiting Sailing'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "stuck stock": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "summary": {
+      "meaning": "Multi-domain summary",
+      "database_term": "all domains (master agent)",
+      "department": "Cross-functional",
+      "confidence": "low"
+    },
+    "supplier country": {
+      "meaning": "Import origin-country concentration",
+      "database_term": "import_shipment.country",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "supplier delay": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "supplier delayed material": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "supplier dependency": {
+      "meaning": "Composite supplier risk (delay+spend+critical supply)",
+      "database_term": "purchase+ab_items+import",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "supplier exposure": {
+      "meaning": "Composite supplier risk (delay+spend+critical supply)",
+      "database_term": "purchase+ab_items+import",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "supplier late": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "supplier lateness": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "supplier making": {
+      "meaning": "Supplier still manufacturing the order",
+      "database_term": "import_shipment.current_status='Under Production'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "supplier missed date": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "supplier not on time": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "supplier on time": {
+      "meaning": "Supplier reliability / delay ranking",
+      "database_term": "purchase (AVG delay, on-time %)",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "supplier performance": {
+      "meaning": "Supplier reliability / delay ranking",
+      "database_term": "purchase (AVG delay, on-time %)",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "supplier problem": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "supplier ranking": {
+      "meaning": "Supplier reliability / delay ranking",
+      "database_term": "purchase (AVG delay, on-time %)",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "supplier rating": {
+      "meaning": "Supplier reliability / delay ranking",
+      "database_term": "purchase (AVG delay, on-time %)",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "supplier reliability": {
+      "meaning": "Supplier reliability / delay ranking",
+      "database_term": "purchase (AVG delay, on-time %)",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "supplier risk": {
+      "meaning": "Composite supplier risk (delay+spend+critical supply)",
+      "database_term": "purchase+ab_items+import",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "supplier score": {
+      "meaning": "Supplier reliability / delay ranking",
+      "database_term": "purchase (AVG delay, on-time %)",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "supply chain status": {
+      "meaning": "Multi-domain summary",
+      "database_term": "all domains (master agent)",
+      "department": "Cross-functional",
+      "confidence": "low"
+    },
+    "supply risk": {
+      "meaning": "Materials/suppliers threatening production",
+      "database_term": "ab_items+purchase+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "supply time": {
+      "meaning": "Time from requirement to delivery",
+      "database_term": "purchase.lead_time / ab_items.lead_time_days",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "t/t in process": {
+      "meaning": "Import shipment status 'T/T in Process'",
+      "database_term": "import_shipment.current_status='T/T in Process'",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "tap handle": {
+      "meaning": "Item category (Power, Hand Tools & Accessories)",
+      "database_term": "item_master.item_sub_group='Power, Hand Tools & Accessories'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "thinner": {
+      "meaning": "Item category (Paint Materials)",
+      "database_term": "item_master.item_sub_group='Paint Materials'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "tied up stock": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "time in transit": {
+      "meaning": "Average transit time of export shipments",
+      "database_term": "logistics_shipment.transit_time",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "time to deliver": {
+      "meaning": "Time from requirement to delivery",
+      "database_term": "purchase.lead_time / ab_items.lead_time_days",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "tips": {
+      "meaning": "Item category (Cutting Tools)",
+      "database_term": "item_master.item_sub_group='Cutting Tools'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "tool room consumption": {
+      "meaning": "Consumption by Tool Room",
+      "database_term": "issuance.department='Tool Room'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "tool room usage": {
+      "meaning": "Usage by Tool Room",
+      "database_term": "issuance.department='Tool Room'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "tools": {
+      "meaning": "Item category (Power, Hand Tools & Accessories)",
+      "database_term": "item_master.item_sub_group='Power, Hand Tools & Accessories'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "top suppliers": {
+      "meaning": "Supplier reliability / delay ranking",
+      "database_term": "purchase (AVG delay, on-time %)",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "total consumption": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "total inventory value": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "total purchases": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "total spend": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "total stock": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "total stock value": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "total usage": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "track export": {
+      "meaning": "Outbound export shipment / its delay",
+      "database_term": "logistics_shipment (actual_arrival vs eta)",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "track import": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "trade term": {
+      "meaning": "Incoterm / delivery term",
+      "database_term": "logistics_shipment.incoterm",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "transit days": {
+      "meaning": "Average transit time of export shipments",
+      "database_term": "logistics_shipment.transit_time",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "transit performance": {
+      "meaning": "Average transit time of export shipments",
+      "database_term": "logistics_shipment.transit_time",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "transit time": {
+      "meaning": "Average transit time of export shipments",
+      "database_term": "logistics_shipment.transit_time",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "transport cost": {
+      "meaning": "Shipping cost / cost per kg",
+      "database_term": "logistics_shipment.total_shipping_cost / nw_kgs",
+      "department": "Logistics",
+      "confidence": "high"
+    },
+    "transporter": {
+      "meaning": "Road transport / internal shifting",
+      "database_term": "logistics_shipment.transporter / truck_status",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "truck status": {
+      "meaning": "Road transport / internal shifting",
+      "database_term": "logistics_shipment.transporter / truck_status",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "trucker": {
+      "meaning": "Road transport / internal shifting",
+      "database_term": "logistics_shipment.transporter / truck_status",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "trucking": {
+      "meaning": "Road transport / internal shifting",
+      "database_term": "logistics_shipment.transporter / truck_status",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "unavailable stock": {
+      "meaning": "Blocked/reserved stock, not usable",
+      "database_term": "stock.hold_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "unblocked stock": {
+      "meaning": "Usable inventory (physical minus held)",
+      "database_term": "stock.available_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "under de-stuffing": {
+      "meaning": "Import shipment status 'Under De-Stuffing'",
+      "database_term": "import_shipment.current_status='Under De-Stuffing'",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "under production": {
+      "meaning": "Import shipment status 'Under Production'",
+      "database_term": "import_shipment.current_status='Under Production'",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "understocked": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "unfulfilled demand": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "unit 2": {
+      "meaning": "Branch / legal entity",
+      "database_term": "branch = 'Qadri Brothers (Pvt.) Ltd. (Unit-II)'",
+      "department": "All",
+      "confidence": "high"
+    },
+    "unit of item": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "unit of measure": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "unit-ii": {
+      "meaning": "Branch / legal entity",
+      "database_term": "branch = 'Qadri Brothers (Pvt.) Ltd. (Unit-II)'",
+      "department": "All",
+      "confidence": "high"
+    },
+    "uom": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "urgent demand": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "urgent items": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "urgent procurement": {
+      "meaning": "Prioritised procurement list",
+      "database_term": "ab_items+requisition+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "urgent requirement": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "urgent stock items": {
+      "meaning": "High stockout-risk items",
+      "database_term": "ab_items.list_type='critical'",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "usable quantity": {
+      "meaning": "Usable inventory (physical minus held)",
+      "database_term": "stock.available_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "usable stock": {
+      "meaning": "Usable inventory (physical minus held)",
+      "database_term": "stock.available_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "usable stock value": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "usage": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "usage by department": {
+      "meaning": "Consumption grouped by department",
+      "database_term": "issuance.department + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "usage by machine": {
+      "meaning": "Consumption grouped by machine",
+      "database_term": "issuance.machine + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "usage cost": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "usage pattern": {
+      "meaning": "Consumption trend over time",
+      "database_term": "issuance.from_date + total_pric",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "usage trend": {
+      "meaning": "Consumption trend over time",
+      "database_term": "issuance.from_date + total_pric",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "usage value": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "used material": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "value of inventory": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "value of stock": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "value on hand": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "value on water": {
+      "meaning": "Import shipment at sea (in transit)",
+      "database_term": "import_shipment.current_status='In Transit'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "value purchased": {
+      "meaning": "Total value bought via POs",
+      "database_term": "purchase.amount",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "vehicle": {
+      "meaning": "Road transport / internal shifting",
+      "database_term": "logistics_shipment.transporter / truck_status",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "vendor delay": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "vendor late": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "vendor performance": {
+      "meaning": "Supplier reliability / delay ranking",
+      "database_term": "purchase (AVG delay, on-time %)",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "vendor ranking": {
+      "meaning": "Supplier reliability / delay ranking",
+      "database_term": "purchase (AVG delay, on-time %)",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "vendor risk": {
+      "meaning": "Composite supplier risk (delay+spend+critical supply)",
+      "database_term": "purchase+ab_items+import",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "vessel sailing": {
+      "meaning": "CONTEXT-DEPENDENT vessel departure (imports=inbound / logistics=export)",
+      "database_term": "import_shipment.current_status / logistics_shipment.sailing_date",
+      "department": "Imports/Logistics",
+      "confidence": "low"
+    },
+    "waiting to sail": {
+      "meaning": "At origin port, vessel not yet departed",
+      "database_term": "import_shipment.current_status='Ready Awaiting Sailing'",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "warehouse stock": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "washers": {
+      "meaning": "Item category (Hardware & Fittings)",
+      "database_term": "item_master.item_sub_group='Hardware & Fittings'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "weld": {
+      "meaning": "Item category (Weld Material)",
+      "database_term": "item_master.item_sub_group='Weld Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "welding": {
+      "meaning": "Item category (Weld Material)",
+      "database_term": "item_master.item_sub_group='Weld Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "welding consumption": {
+      "meaning": "Consumption by Welding",
+      "database_term": "issuance.department='Welding'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "welding material": {
+      "meaning": "Item category (Weld Material)",
+      "database_term": "item_master.item_sub_group='Weld Material'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "welding usage": {
+      "meaning": "Usage by Welding",
+      "database_term": "issuance.department='Welding'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "what could stop production": {
+      "meaning": "Materials/suppliers threatening production",
+      "database_term": "ab_items+purchase+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "what do we have": {
+      "meaning": "Physical quantity on hand (includes held)",
+      "database_term": "stock.stock_qty",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "what is demanded": {
+      "meaning": "Internal material demand / pending quantity",
+      "database_term": "requisition.pending_quantity",
+      "department": "Procurement",
+      "confidence": "high"
+    },
+    "what is item code": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "what is this item": {
+      "meaning": "Item identity / classification lookup",
+      "database_term": "item_master.*",
+      "department": "Item Master",
+      "confidence": "high"
+    },
+    "what risks production": {
+      "meaning": "Materials/suppliers threatening production",
+      "database_term": "ab_items+purchase+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "what should we buy": {
+      "meaning": "Prioritised procurement list",
+      "database_term": "ab_items+requisition+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "what to prioritize": {
+      "meaning": "Prioritised procurement list",
+      "database_term": "ab_items+requisition+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "what to reorder": {
+      "meaning": "Items whose usable stock is below reorder level",
+      "database_term": "stock.reorder_level",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "what was issued": {
+      "meaning": "Material issued from stores (value = total_pric)",
+      "database_term": "issuance.total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "when arriving": {
+      "meaning": "Estimated time of arrival / slippage",
+      "database_term": "import_shipment.eta / eta_1..eta_4",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "when at factory": {
+      "meaning": "Expected arrival at Qadri site after clearance",
+      "database_term": "import_shipment.eta_works",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "when at our site": {
+      "meaning": "Expected arrival at Qadri site after clearance",
+      "database_term": "import_shipment.eta_works",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "when departing": {
+      "meaning": "Estimated time of departure",
+      "database_term": "import_shipment.etd",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "when will it arrive": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "where is my shipment": {
+      "meaning": "Status/location of an inbound import shipment",
+      "database_term": "import_shipment.current_status",
+      "department": "Imports",
+      "confidence": "high"
+    },
+    "which country": {
+      "meaning": "Import origin-country concentration",
+      "database_term": "import_shipment.country",
+      "department": "Imports",
+      "confidence": "medium"
+    },
+    "which department used": {
+      "meaning": "Consumption grouped by department",
+      "database_term": "issuance.department + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "which items may finish": {
+      "meaning": "Stockout-risk items",
+      "database_term": "ab_items+stock+import (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "which machine used": {
+      "meaning": "Consumption grouped by machine",
+      "database_term": "issuance.machine + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "which port": {
+      "meaning": "Port of discharge / destination",
+      "database_term": "logistics_shipment.pod",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "which suppliers are late": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "which suppliers are risky": {
+      "meaning": "Composite supplier risk (delay+spend+critical supply)",
+      "database_term": "purchase+ab_items+import",
+      "department": "Purchase",
+      "confidence": "medium"
+    },
+    "who consumed": {
+      "meaning": "Consumption grouped by department",
+      "database_term": "issuance.department + total_pric",
+      "department": "Issuance",
+      "confidence": "high"
+    },
+    "who is delaying": {
+      "meaning": "Delivery late vs required date",
+      "database_term": "purchase.purchase_date - purchase.required_date",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "who pays freight": {
+      "meaning": "Incoterm / delivery term",
+      "database_term": "logistics_shipment.incoterm",
+      "department": "Logistics",
+      "confidence": "medium"
+    },
+    "why did stock rise": {
+      "meaning": "Diagnose inventory change (in vs out)",
+      "database_term": "purchase vs issuance (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "why inventory increased": {
+      "meaning": "Diagnose inventory change (in vs out)",
+      "database_term": "purchase vs issuance (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "why stock increased": {
+      "meaning": "Diagnose inventory change (in vs out)",
+      "database_term": "purchase vs issuance (cross-functional)",
+      "department": "Cross-functional",
+      "confidence": "medium"
+    },
+    "workshop": {
+      "meaning": "Item category (Workshop & General Items)",
+      "database_term": "item_master.item_sub_group='Workshop & General Items'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "workshop consumption": {
+      "meaning": "Consumption by Workshop",
+      "database_term": "issuance.department='Workshop'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "workshop items": {
+      "meaning": "Item category (Workshop & General Items)",
+      "database_term": "item_master.item_sub_group='Workshop & General Items'",
+      "department": "Item Master/Stores",
+      "confidence": "medium"
+    },
+    "workshop usage": {
+      "meaning": "Usage by Workshop",
+      "database_term": "issuance.department='Workshop'",
+      "department": "Issuance",
+      "confidence": "medium"
+    },
+    "worst supplier": {
+      "meaning": "Supplier reliability / delay ranking",
+      "database_term": "purchase (AVG delay, on-time %)",
+      "department": "Purchase",
+      "confidence": "high"
+    },
+    "worth of stock": {
+      "meaning": "Financial worth of usable stock (PKR)",
+      "database_term": "stock.available_amount",
+      "department": "Stores",
+      "confidence": "high"
+    },
+    "yet to sail": {
+      "meaning": "At origin port, vessel not yet departed",
+      "database_term": "import_shipment.current_status='Ready Awaiting Sailing'",
+      "department": "Imports",
+      "confidence": "high"
+    }
+  }
+}
