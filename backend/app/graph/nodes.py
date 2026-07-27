@@ -224,7 +224,13 @@ def repair_sql(state: ChatState) -> ChatState:
     error = state.get("guard_reason") if not state.get("guard_ok") else state.get("exec_error")
     history = state.get("history") or []
     try:
-        new_sql = client.repair_sql(state["system_prompt"], history, error or "Unknown error.")
+        new_sql = client.repair_sql(
+            state["system_prompt"],
+            history,
+            error or "Unknown error.",
+            question=state["llm_question"],
+            failed_sql=state.get("sql") or "(no SQL was produced)",
+        )
     except Exception:
         return {
             **state,

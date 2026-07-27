@@ -175,16 +175,36 @@ class OpenAIClient:
         text = self._chat(messages, temperature=0)
         return _strip_fences(text)
 
-    def repair_sql(self, system_prompt: str, history: list[dict], error: str) -> str:
+    def repair_sql(
+        self,
+        system_prompt: str,
+        history: list[dict],
+        error: str,
+        question: str,
+        failed_sql: str,
+    ) -> str:
+        """Ask for a corrected query. `question` and `failed_sql` are
+        REQUIRED, not optional context: `history` is frequently empty (a
+        session's first turn, or right after a clarify-only turn carries no
+        prior exchange), and without restating what was actually being
+        asked, a repair call has nothing to ground a correction in except
+        the bare error text — which previously caused the model to invent
+        an entirely unrelated but syntactically-valid query (e.g. a plain
+        `SELECT * FROM ab_items` for a "what did Production consume"
+        question) instead of fixing the real one. Always pass the real
+        values; never call this with a placeholder.
+        """
         if not self.available:
             raise RuntimeError("OpenAI unavailable (no API key configured).")
         messages = [{"role": "system", "content": system_prompt}] + history + [
             {
                 "role": "user",
                 "content": (
-                    "The previous query was rejected or failed with this error:\n"
-                    f"{error}\n\n"
-                    "Return ONE corrected PostgreSQL SELECT query. ONLY the SQL."
+                    f"You were asked: {question}\n\n"
+                    f"You wrote this query:\n{failed_sql}\n\n"
+                    f"It was rejected or failed with this error:\n{error}\n\n"
+                    "Return ONE corrected PostgreSQL SELECT query that still "
+                    "answers the ORIGINAL question above. ONLY the SQL."
                 ),
             }
         ]

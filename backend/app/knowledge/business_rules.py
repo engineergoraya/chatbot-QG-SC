@@ -238,6 +238,24 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
    - `ab_items` currently covers only 'Qadcast (Pvt) Ltd.' and 'Qadri Brothers
      (Pvt.) Ltd. (Unit-II)' — see rule 4 for the safety-stock/reorder-level
      formula and its coverage limits.
+   - A DEPARTMENT (issuance.department, store_requisition.department) is
+     NOT a branch — do not filter a department name on the `branch` column,
+     and do not iterate over branches when the user names a department.
+     `issuance.department` is a free-standing org-unit column, unrelated to
+     the branch/legal-entity concept above; match it directly with exact
+     equality on the department NAME the user gave (e.g. `department =
+     'Production'`), not the branch. Real values include (most-used first):
+     'Production', 'Fitter', 'Fabrication', 'Workshop', 'Welding',
+     'Maintenance', 'Boring Section', 'IPPC', 'Lathe Section', 'LAB',
+     'Coupla Section', 'Melting', 'Electrical', 'CNC Machining', 'Quality
+     Assurance', 'Tool Room', 'Store', 'Administration' (50 distinct values
+     total — this is not exhaustive; trust an exact match on the name the
+     user gave rather than guessing a close variant).
+     Worked example — "What did Production consume?" (period resolved):
+       SELECT SUM(total_price) AS consumed_pkr
+       FROM issuance
+       WHERE department = 'Production' AND status NOT IN ('HoldIssuence', 'Hold')
+         AND from_date >= CURRENT_DATE - INTERVAL '6 months'
 
 7. NULLS ARE EXPECTED.
    - Many descriptive fields (description, demand_ref_no, machine, group-level
