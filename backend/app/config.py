@@ -46,6 +46,11 @@ STATEMENT_TIMEOUT_MS = int(_get("CHATBOT_STATEMENT_TIMEOUT_MS", "8000"))
 
 CORS_ORIGINS = [o.strip() for o in _get("CORS_ORIGINS", "http://localhost:5173").split(",")]
 
+# Session store: in-memory (default, process-local) unless REDIS_URL is set,
+# in which case app/session_store.py uses Redis instead — see that module.
+REDIS_URL = _get("REDIS_URL")
+REDIS_SESSION_TTL_SECONDS = int(_get("REDIS_SESSION_TTL_SECONDS", str(24 * 3600)))
+
 
 def _dsn_from_url(url: str) -> dict:
     p = urlparse(url)

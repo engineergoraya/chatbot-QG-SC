@@ -11,3 +11,4 @@ pypdf
 scikit-learn
 openpyxl
 pytest
+redis

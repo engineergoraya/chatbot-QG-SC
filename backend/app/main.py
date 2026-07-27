@@ -6,10 +6,9 @@ Exposes:
   GET  /api/health   — liveness + DB/LLM readiness check
 
 Session memory (SQL-generation history, and a pending time-period
-clarification question) lives in a simple in-memory dict keyed by
-session_id. That's enough for a single-process prototype; if this ever runs
-behind multiple workers/replicas, swap _SESSIONS for a shared store (Redis)
-without changing the graph or endpoint contract.
+clarification question) lives behind app/session_store.py's SessionStore
+interface — in-memory by default, Redis when REDIS_URL is set. See that
+module for details.
 """
 
 from __future__ import annotations
@@ -25,6 +24,7 @@ from app.graph.workflow import get_graph
 from app.knowledge.rag import get_index
 from app.llm.openai_client import get_client
 from app.schemas import ChatRequest, ChatResponse
+from app.session_store import get_store
 
 app = FastAPI(title="Qadri Group AI Supply Chain Assistant")
 
@@ -54,17 +54,6 @@ app.add_middleware(
 )
 
 
-class _Session:
-    __slots__ = ("history", "pending_question")
-
-    def __init__(self) -> None:
-        self.history: list[dict] = []
-        self.pending_question: str | None = None
-
-
-_SESSIONS: dict[str, _Session] = {}
-
-
 @app.get("/api/health")
 def health():
     db_ok, db_detail = True, "ok"
@@ -78,6 +67,7 @@ def health():
         "status": "ok" if db_ok else "degraded",
         "database": {"ok": db_ok, "detail": db_detail},
         "openai_configured": get_client().available,
+        "session_store": "redis" if config.REDIS_URL else "in-memory",
     }
 
 
@@ -92,8 +82,9 @@ def chat(req: ChatRequest) -> ChatResponse:
             session_id=req.session_id or str(uuid.uuid4()),
         )
 
+    store = get_store()
     session_id = req.session_id or str(uuid.uuid4())
-    session = _SESSIONS.setdefault(session_id, _Session())
+    session = store.get(session_id)
 
     # If the previous turn asked for a time period, pair this reply with the
     # original question so the model can resolve it (see business_rules.py
@@ -125,6 +116,7 @@ def chat(req: ChatRequest) -> ChatResponse:
         session.pending_question = question
     else:
         session.history = result.get("new_history", session.history)
+    store.save(session_id, session)
 
     return ChatResponse(
         answer=result.get("answer") or "I could not find sufficient information in the available supply chain data.",
