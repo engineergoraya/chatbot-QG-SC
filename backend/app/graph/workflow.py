@@ -22,6 +22,9 @@ def _route_after_understand(state: ChatState) -> str:
 
 
 def _route_after_generate_sql(state: ChatState) -> str:
+    if state.get("is_conversational"):
+        # Not a data question — answer it from the session transcript.
+        return "conversational_answer"
     if state.get("sql") is None:
         # Either no API key, a generation error, or a clarification request —
         # generate_sql already set `answer` for all three cases.
@@ -52,6 +55,7 @@ def build_graph():
     graph.add_node("dictionary_answer", nodes.dictionary_answer_node)
     graph.add_node("retrieve_context", nodes.retrieve_business_context)
     graph.add_node("generate_sql", nodes.generate_sql)
+    graph.add_node("conversational_answer", nodes.conversational_answer)
     graph.add_node("validate_sql", nodes.validate_sql)
     graph.add_node("execute_sql", nodes.execute_sql)
     graph.add_node("repair_sql", nodes.repair_sql)
@@ -67,8 +71,13 @@ def build_graph():
     graph.add_edge("retrieve_context", "generate_sql")
     graph.add_conditional_edges(
         "generate_sql", _route_after_generate_sql,
-        {END: END, "validate_sql": "validate_sql"},
+        {
+            END: END,
+            "validate_sql": "validate_sql",
+            "conversational_answer": "conversational_answer",
+        },
     )
+    graph.add_edge("conversational_answer", END)
     graph.add_conditional_edges(
         "validate_sql", _route_after_validate,
         {"execute_sql": "execute_sql", "repair_sql": "repair_sql"},

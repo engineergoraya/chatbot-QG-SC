@@ -37,8 +37,32 @@ from app import config
 
 @dataclass
 class SessionData:
+    # The SQL-GENERATION conversation: {user: question, assistant: the SQL it
+    # wrote}. Replayed into generate_sql so follow-ups like "what about the
+    # ones awaiting sailing?" inherit the previous query's shape.
     history: list[dict] = field(default_factory=list)
+    # The HUMAN-FACING conversation: {user: question, assistant: the answer
+    # text the user actually saw}. Kept separately from `history` because the
+    # two serve different callers — the SQL model needs prior SQL, while the
+    # explain/conversational steps need prior ANSWERS ("explain that more
+    # simply", "what did I ask first?"). Trimmed to the most recent
+    # MAX_TRANSCRIPT_TURNS exchanges so a long session can't grow the prompt
+    # without bound.
+    transcript: list[dict] = field(default_factory=list)
     pending_question: str | None = None
+
+
+# One "turn" = a user message + the assistant's reply, so this is 12 messages.
+MAX_TRANSCRIPT_TURNS = 6
+
+
+def append_turn(transcript: list[dict], question: str, answer: str) -> list[dict]:
+    """Append one exchange to the transcript, trimmed to the recent window."""
+    updated = transcript + [
+        {"role": "user", "content": question},
+        {"role": "assistant", "content": answer},
+    ]
+    return updated[-(MAX_TRANSCRIPT_TURNS * 2):]
 
 
 class SessionStore(ABC):
@@ -80,6 +104,7 @@ class RedisStore(SessionStore):
         payload = json.loads(raw)
         return SessionData(
             history=payload.get("history", []),
+            transcript=payload.get("transcript", []),
             pending_question=payload.get("pending_question"),
         )
 

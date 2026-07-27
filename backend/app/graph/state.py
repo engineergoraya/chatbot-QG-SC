@@ -19,6 +19,8 @@ class ChatState(TypedDict, total=False):
                                  # (may be original_question wrapped with
                                  # clarification context — see nodes.py)
     history: list[dict]         # prior SQL-gen turns for this session
+    transcript: list[dict]      # prior human-facing Q&A turns (see
+                                 # session_store.SessionData.transcript)
     is_clarification_reply: bool  # True when llm_question is a pending-
                                    # question/reply pairing (see main.py) —
                                    # changes which reminder generate_sql uses
@@ -36,6 +38,10 @@ class ChatState(TypedDict, total=False):
     sql: str | None
     needs_clarification: bool
     clarifying_question: str | None
+    is_conversational: bool     # True when the question is about the
+                                 # CONVERSATION itself ("what did I ask
+                                 # first?", "explain that more simply") and
+                                 # needs the transcript, not a SQL query
 
     # -- validate_sql --
     guard_ok: bool
@@ -57,4 +63,5 @@ class ChatState(TypedDict, total=False):
     give_up: bool
     new_history: list[dict]     # history to persist back into the session
     done_reason: str            # "dictionary" | "clarify" | "guard_failed" |
-                                 # "exec_failed" | "empty" | "answered" | "error"
+                                 # "exec_failed" | "empty" | "answered" |
+                                 # "conversational" | "error"

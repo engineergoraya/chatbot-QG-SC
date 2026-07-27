@@ -11,7 +11,13 @@ from __future__ import annotations
 
 import json
 
-from app.session_store import InMemoryStore, RedisStore, SessionData
+from app.session_store import (
+    MAX_TRANSCRIPT_TURNS,
+    InMemoryStore,
+    RedisStore,
+    SessionData,
+    append_turn,
+)
 
 
 def test_in_memory_store_roundtrip():
@@ -83,3 +89,36 @@ def test_redis_store_missing_session_returns_fresh():
     store._ttl = 3600
 
     assert store.get("never-seen") == SessionData()
+
+
+def test_redis_store_roundtrips_transcript():
+    """The human-facing transcript must survive a Redis save/load, not just
+    the SQL history — it's what the conversational/explain steps read."""
+    store = RedisStore.__new__(RedisStore)
+    store._r = _FakeRedis()
+    store._ttl = 3600
+
+    data = SessionData()
+    data.transcript = append_turn(data.transcript, "how many on water?", "There are 55.")
+    store.save("s1", data)
+
+    reloaded = store.get("s1")
+    assert reloaded.transcript == [
+        {"role": "user", "content": "how many on water?"},
+        {"role": "assistant", "content": "There are 55."},
+    ]
+
+
+def test_append_turn_trims_to_recent_window():
+    """A long session must not grow the prompt without bound."""
+    transcript: list[dict] = []
+    for i in range(MAX_TRANSCRIPT_TURNS + 4):
+        transcript = append_turn(transcript, f"q{i}", f"a{i}")
+
+    assert len(transcript) == MAX_TRANSCRIPT_TURNS * 2
+    # the OLDEST turns are the ones dropped; the newest survives
+    assert transcript[-2:] == [
+        {"role": "user", "content": f"q{MAX_TRANSCRIPT_TURNS + 3}"},
+        {"role": "assistant", "content": f"a{MAX_TRANSCRIPT_TURNS + 3}"},
+    ]
+    assert all(m["content"] != "q0" for m in transcript)

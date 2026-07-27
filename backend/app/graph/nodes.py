@@ -33,7 +33,7 @@ from app.graph.state import ChatState
 from app.knowledge import dictionary
 from app.knowledge.business_rules import build_system_prompt
 from app.knowledge.rag import get_index
-from app.llm.openai_client import get_client
+from app.llm.openai_client import CONVERSATIONAL_PREFIX, get_client
 
 _CLARIFY_PREFIX = "CLARIFY_TIME_PERIOD:"
 _DEFAULT_CLARIFY_TEXT = (
@@ -149,7 +149,31 @@ def generate_sql(state: ChatState) -> ChatState:
             "new_history": history,  # nothing durable to add yet
         }
 
+    if sql.strip().startswith(CONVERSATIONAL_PREFIX):
+        # Not a data question — answered from the transcript instead.
+        return {**state, "sql": None, "is_conversational": True, "needs_clarification": False}
+
     return {**state, "sql": sql, "needs_clarification": False, "repair_count": state.get("repair_count", 0)}
+
+
+def conversational_answer(state: ChatState) -> ChatState:
+    """Answer a question about the CONVERSATION (not the data) from the
+    human-facing transcript. No SQL, no DB access."""
+    client = get_client()
+    transcript = state.get("transcript") or []
+    try:
+        answer = client.answer_conversationally(transcript, state["original_question"])
+    except Exception:
+        answer = (
+            "I couldn't reconstruct that from our conversation so far. "
+            "Try asking the supply-chain question directly."
+        )
+    return {
+        **state,
+        "answer": answer,
+        "confidence": confidence.CONVERSATIONAL,
+        "done_reason": "conversational",
+    }
 
 
 def validate_sql(state: ChatState) -> ChatState:
@@ -256,7 +280,12 @@ def generate_answer(state: ChatState) -> ChatState:
     client = get_client()
     preview = _preview(state["columns"], state["rows"])
     try:
-        answer = client.explain(state["llm_question"], state["safe_sql"], preview)
+        answer = client.explain(
+            state["llm_question"],
+            state["safe_sql"],
+            preview,
+            transcript=state.get("transcript") or [],
+        )
     except Exception:
         answer = _fallback_answer(state["columns"], state["rows"], state["row_count"])
 

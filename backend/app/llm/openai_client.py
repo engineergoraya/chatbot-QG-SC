@@ -97,6 +97,28 @@ _GENERATION_REMINDER_FOLLOWUP = (
     "rule 5."
 )
 
+# Second sentinel escape (alongside CLARIFY_TIME_PERIOD): some messages in a
+# real conversation aren't data questions at all — "what did I ask you
+# first?", "explain that more simply", "thanks". Without this, EVERY message
+# was forced down the SQL path, so a meta-question got answered with a
+# confidently-wrong data figure (observed: "What did I ask you first?"
+# returned an in-transit count). The graph routes this sentinel to
+# answer_conversationally(), which uses the transcript instead of the DB.
+_CONVERSATIONAL_ESCAPE = (
+    "\n\nSEPARATE ESCAPE HATCH: if this message is not a request for "
+    "supply-chain DATA at all — i.e. it asks about THIS CONVERSATION "
+    "(\"what did I ask you first?\", \"summarise what we discussed\"), asks "
+    "you to rephrase/re-explain something you ALREADY answered (\"explain "
+    "that more simply\", \"why does that matter?\"), or is pure "
+    "pleasantry (\"thanks\") — then output ONLY the single line "
+    "`CONVERSATIONAL:` and nothing else. Do NOT write SQL for those. This "
+    "does NOT apply to a follow-up that genuinely needs NEW data (\"what "
+    "about the ones awaiting sailing?\", \"and their total value?\") — "
+    "those are real data questions; write SQL for them as normal."
+)
+
+CONVERSATIONAL_PREFIX = "CONVERSATIONAL:"
+
 
 def _strip_fences(text: str) -> str:
     return _FENCE.sub("", text).strip()
@@ -168,12 +190,43 @@ class OpenAIClient:
                 "content": (
                     "Write ONE PostgreSQL SELECT query that answers the question below. "
                     "Return ONLY the SQL — no explanation, no markdown fences.\n\n"
-                    f"Question: {question}" + reminder
+                    f"Question: {question}" + reminder + _CONVERSATIONAL_ESCAPE
                 ),
             }
         ]
         text = self._chat(messages, temperature=0)
         return _strip_fences(text)
+
+    def answer_conversationally(self, transcript: list[dict], question: str) -> str:
+        """Answer a question ABOUT the conversation (not about the data)
+        using only the human-facing transcript — no SQL, no DB access.
+
+        Used for the CONVERSATIONAL sentinel path: "what did I ask you
+        first?", "explain your last answer more simply", "thanks". These
+        previously fell through to SQL generation, which produced a
+        confidently-wrong data answer to a question that wasn't about data
+        at all.
+        """
+        if not self.available:
+            raise RuntimeError("OpenAI unavailable (no API key configured).")
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are the Qadri Group supply-chain assistant, mid-conversation "
+                    "with a user. The messages that follow are the real conversation so "
+                    "far. Answer the user's latest message using ONLY that conversation "
+                    "history — it is a question about the conversation itself (or a "
+                    "request to rephrase/clarify something you already said), not a "
+                    "request for new data.\n\n"
+                    "Rules: never invent a figure that does not appear earlier in the "
+                    "conversation. If the answer genuinely isn't in the history above, "
+                    "say so plainly and invite them to ask the data question directly. "
+                    "Keep it to 3-4 lines, professional and direct."
+                ),
+            }
+        ] + transcript + [{"role": "user", "content": question}]
+        return self._chat(messages, temperature=0.2).strip()
 
     def repair_sql(
         self,
@@ -212,7 +265,22 @@ class OpenAIClient:
         return _strip_fences(text)
 
     # -- Explanation ------------------------------------------------------
-    def explain(self, question: str, sql: str, result_preview: str) -> str:
+    def explain(
+        self,
+        question: str,
+        sql: str,
+        result_preview: str,
+        transcript: list[dict] | None = None,
+    ) -> str:
+        """Turn the query result into the user-facing answer.
+
+        `transcript` is the prior human-facing conversation. It's included
+        so the answer reads as a continuation rather than an isolated
+        response — e.g. a follow-up can say "that's 34 fewer than the 55 in
+        transit above" instead of repeating context the user already has.
+        The result rows remain the ONLY source for new figures (see the
+        instruction below): prior turns give continuity, never data.
+        """
         if not self.available:
             raise RuntimeError("OpenAI unavailable.")
         messages = [
@@ -220,9 +288,16 @@ class OpenAIClient:
                 "role": "system",
                 "content": (
                     "You explain live database query results to Qadri Group "
-                    "supply-chain staff.\n\n" + RESPONSE_STYLE
+                    "supply-chain staff.\n\n" + RESPONSE_STYLE + "\n"
+                    "- Earlier turns of this conversation may be shown before the "
+                    "current question, for CONTINUITY only (so you can refer back "
+                    "naturally to what was already discussed). Every NUMBER you "
+                    "state about the current question must come from the result "
+                    "rows below — never carry a figure over from an earlier turn "
+                    "as if it answered this one."
                 ),
             },
+            *(transcript or []),
             {
                 "role": "user",
                 "content": (

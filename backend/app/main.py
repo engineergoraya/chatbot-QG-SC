@@ -29,7 +29,7 @@ from app.knowledge.rag import get_index
 from app.llm.openai_client import get_client
 from app.logging_config import log_request
 from app.schemas import ChatRequest, ChatResponse
-from app.session_store import SessionData, SessionStore, get_store
+from app.session_store import SessionData, SessionStore, append_turn, get_store
 
 app = FastAPI(title="Qadri Group AI Supply Chain Assistant")
 
@@ -102,6 +102,7 @@ def _prepare(req: ChatRequest) -> tuple[str, SessionStore, SessionData, dict]:
         "llm_question": llm_question,
         "is_clarification_reply": is_clarification_reply,
         "history": session.history,
+        "transcript": session.transcript,
         "repair_count": 0,
         "give_up": False,
     }
@@ -137,6 +138,17 @@ def _finalize(
         session.pending_question = result.get("original_question") or session.pending_question
     else:
         session.history = result.get("new_history", session.history)
+
+    # Record the human-facing exchange on EVERY terminal path — including the
+    # dictionary, conversational, empty-result and clarification turns, which
+    # `history` (SQL-only) deliberately skips. Without this the transcript
+    # would have holes, and a follow-up like "explain that again" right after
+    # a definition answer would have nothing to refer back to.
+    answer_text = result.get("answer")
+    if answer_text:
+        session.transcript = append_turn(
+            session.transcript, result.get("original_question", ""), answer_text
+        )
     store.save(session_id, session)
 
     response = ChatResponse(
@@ -195,6 +207,7 @@ _NODE_TO_EVENT = {
     "repair_sql": "generating_sql",
     "execute_sql": "running_query",
     "generate_answer": "explaining",
+    "conversational_answer": "explaining",
 }
 
 

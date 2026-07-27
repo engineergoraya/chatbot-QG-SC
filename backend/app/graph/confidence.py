@@ -31,6 +31,13 @@ Scheme, highest to lowest trust:
     is whether the ZERO is the right answer or a subtly wrong filter (e.g.
     a misspelled item/supplier/branch) — moderate, not high, confidence.
 
+  CONVERSATIONAL (0.9)
+    A question about the conversation itself ("what did I ask first?",
+    "explain that more simply"), answered from the session transcript
+    rather than the database. High, but below CLEAN_SQL: it's grounded in
+    real prior turns, though it restates earlier figures rather than
+    re-verifying them against live data.
+
   CLARIFICATION_NEEDED (0.4)
     Not an answer at all yet — the assistant asked back for a time period
     (business_rules.py rule 14) rather than assume a window. Scored low
@@ -50,6 +57,7 @@ CLEAN_SQL = 0.95
 REPAIRED_ONCE = 0.75
 REPAIRED_TWICE = 0.55
 EMPTY_RESULT = 0.6
+CONVERSATIONAL = 0.9
 CLARIFICATION_NEEDED = 0.4
 GIVE_UP = 0.0
 CONFIG_OR_GENERATION_ERROR = 0.0
