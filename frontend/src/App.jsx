@@ -17,15 +17,57 @@ function ConfidenceBadge({ value }) {
   return <span className={`confidence confidence-${tone}`}>{pct}% confidence</span>;
 }
 
-function Message({ role, text, sql, confidence }) {
+const TABLE_ROW_CAP = 100;
+
+function ResultTable({ columns, rows }) {
+  if (!columns?.length || !rows?.length) return null;
+  const shown = rows.slice(0, TABLE_ROW_CAP);
+  return (
+    <div className="table-wrap">
+      <table className="result-table">
+        <thead>
+          <tr>
+            {columns.map((c) => (
+              <th key={c}>{c}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {shown.map((row, i) => (
+            <tr key={i}>
+              {columns.map((c) => (
+                <td key={c}>{row[c] === null || row[c] === undefined ? "—" : String(row[c])}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {rows.length > shown.length && (
+        <p className="table-note">
+          Showing {shown.length} of {rows.length} rows.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Message({ role, text, sql, confidence, columns, rows }) {
+  const hasTable = Array.isArray(rows) && rows.length > 1;
   const [showSql, setShowSql] = useState(false);
+  const [showTable, setShowTable] = useState(hasTable);
+
   return (
     <div className={`bubble-row ${role}`}>
       <div className={`bubble ${role}`}>
         <p>{text}</p>
-        {role === "assistant" && (confidence !== undefined || sql) && (
+        {role === "assistant" && (confidence !== undefined || sql || hasTable) && (
           <div className="bubble-meta">
             {confidence !== undefined && <ConfidenceBadge value={confidence} />}
+            {hasTable && (
+              <button className="link-btn" onClick={() => setShowTable((s) => !s)}>
+                {showTable ? "hide table" : `show table (${rows.length} rows)`}
+              </button>
+            )}
             {sql && (
               <button className="link-btn" onClick={() => setShowSql((s) => !s)}>
                 {showSql ? "hide SQL" : "show SQL"}
@@ -33,6 +75,7 @@ function Message({ role, text, sql, confidence }) {
             )}
           </div>
         )}
+        {showTable && hasTable && <ResultTable columns={columns} rows={rows} />}
         {showSql && sql && <pre className="sql-block">{sql}</pre>}
       </div>
     </div>
@@ -67,7 +110,14 @@ export default function App() {
       setSessionId(res.session_id);
       setMessages((m) => [
         ...m,
-        { role: "assistant", text: res.answer, sql: res.sql_used, confidence: res.confidence },
+        {
+          role: "assistant",
+          text: res.answer,
+          sql: res.sql_used,
+          confidence: res.confidence,
+          columns: res.columns,
+          rows: res.rows,
+        },
       ]);
     } catch (err) {
       setMessages((m) => [
@@ -117,7 +167,15 @@ export default function App() {
         )}
 
         {messages.map((m, i) => (
-          <Message key={i} role={m.role} text={m.text} sql={m.sql} confidence={m.confidence} />
+          <Message
+            key={i}
+            role={m.role}
+            text={m.text}
+            sql={m.sql}
+            confidence={m.confidence}
+            columns={m.columns}
+            rows={m.rows}
+          />
         ))}
 
         {loading && (

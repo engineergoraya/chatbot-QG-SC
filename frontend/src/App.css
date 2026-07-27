@@ -190,6 +190,54 @@ body {
   word-break: break-word;
 }
 
+.bubble.assistant:has(.table-wrap) {
+  max-width: 95%;
+}
+
+.table-wrap {
+  margin-top: 0.6rem;
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid #e2e6ee;
+  border-radius: 8px;
+}
+
+.result-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.result-table th,
+.result-table td {
+  padding: 0.4rem 0.7rem;
+  text-align: left;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.result-table thead th {
+  background: #f4f6fb;
+  color: var(--navy);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+
+.result-table tbody tr:nth-child(even) {
+  background: #fafbfd;
+}
+
+.result-table tbody tr:hover {
+  background: #f0f4fb;
+}
+
+.table-note {
+  margin: 0.4rem 0.7rem;
+  font-size: 0.72rem;
+  color: #888;
+}
+
 .composer {
   display: flex;
   gap: 0.6rem;
