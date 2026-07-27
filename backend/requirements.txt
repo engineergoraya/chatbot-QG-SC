@@ -10,3 +10,4 @@ langchain-core
 pypdf
 scikit-learn
 openpyxl
+pytest
