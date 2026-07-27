@@ -52,6 +52,33 @@ body {
   color: #cdd8ee;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.clear-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.clear-btn:hover:not(:disabled) {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.clear-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .health {
   display: flex;
   align-items: center;

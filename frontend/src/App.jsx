@@ -54,7 +54,9 @@ function ResultTable({ columns, rows }) {
 function Message({ role, text, sql, confidence, columns, rows }) {
   const hasTable = Array.isArray(rows) && rows.length > 1;
   const [showSql, setShowSql] = useState(false);
-  const [showTable, setShowTable] = useState(hasTable);
+  // Collapsed by default: the answer should stay a short, readable summary.
+  // The table is opt-in via the toggle for anyone who wants the detail.
+  const [showTable, setShowTable] = useState(false);
 
   return (
     <div className={`bubble-row ${role}`}>
@@ -136,6 +138,15 @@ export default function App() {
     }
   }
 
+  function handleClear() {
+    // Dropping the session_id is what actually clears the assistant's memory:
+    // the next message omits it, so the backend starts a brand-new session
+    // rather than replaying the old transcript/SQL history.
+    setMessages([]);
+    setSessionId(null);
+    setInput("");
+  }
+
   const healthDotClass =
     health?.status === "ok" ? "ok" : health?.status === "degraded" ? "degraded" : "down";
 
@@ -146,9 +157,19 @@ export default function App() {
           <h1>Qadri Group</h1>
           <p>AI Supply Chain Assistant</p>
         </div>
-        <div className="health" title={JSON.stringify(health)}>
-          <span className={`health-dot ${healthDotClass}`} />
-          {health?.openai_configured === false ? "LLM key not set" : health?.status || "checking…"}
+        <div className="header-right">
+          <button
+            className="clear-btn"
+            onClick={handleClear}
+            disabled={loading || messages.length === 0}
+            title="Start a new conversation (clears the assistant's memory)"
+          >
+            Clear chat
+          </button>
+          <div className="health" title={JSON.stringify(health)}>
+            <span className={`health-dot ${healthDotClass}`} />
+            {health?.openai_configured === false ? "LLM key not set" : health?.status || "checking…"}
+          </div>
         </div>
       </header>
 
