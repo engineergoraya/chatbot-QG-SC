@@ -28,7 +28,7 @@ import json
 
 from app.db import executor
 from app.db.introspect import introspect
-from app.graph import guard
+from app.graph import confidence, guard
 from app.graph.state import ChatState
 from app.knowledge import dictionary
 from app.knowledge.business_rules import build_system_prompt
@@ -75,7 +75,7 @@ def dictionary_answer_node(state: ChatState) -> ChatState:
     return {
         **state,
         "answer": state["dictionary_answer"],
-        "confidence": 1.0,
+        "confidence": confidence.DICTIONARY_HIT,
         "done_reason": "dictionary",
     }
 
@@ -112,7 +112,7 @@ def generate_sql(state: ChatState) -> ChatState:
                 "found. Add OPENAI_API_KEY to backend/.env, then restart the "
                 "server. (The database and safety guard are ready.)"
             ),
-            "confidence": 0.0,
+            "confidence": confidence.CONFIG_OR_GENERATION_ERROR,
             "done_reason": "error",
             "sql": None,
             "needs_clarification": False,
@@ -130,7 +130,7 @@ def generate_sql(state: ChatState) -> ChatState:
         return {
             **state,
             "answer": f"Could not generate a query for that question ({e}).",
-            "confidence": 0.0,
+            "confidence": confidence.CONFIG_OR_GENERATION_ERROR,
             "done_reason": "error",
             "sql": None,
             "needs_clarification": False,
@@ -144,7 +144,7 @@ def generate_sql(state: ChatState) -> ChatState:
             "needs_clarification": True,
             "clarifying_question": clarification,
             "answer": clarification,
-            "confidence": 0.4,
+            "confidence": confidence.CLARIFICATION_NEEDED,
             "done_reason": "clarify",
             "new_history": history,  # nothing durable to add yet
         }
@@ -189,7 +189,7 @@ def execute_sql(state: ChatState) -> ChatState:
                 "The item, supplier, or branch you named may not exist in the "
                 "data, or the filters matched nothing."
             ),
-            "confidence": 0.6,
+            "confidence": confidence.EMPTY_RESULT,
             "done_reason": "empty",
         }
 
@@ -216,7 +216,7 @@ def repair_sql(state: ChatState) -> ChatState:
                 f"a couple of attempts (last issue: {reason or 'unknown error'}). "
                 "Try rephrasing the question."
             ),
-            "confidence": 0.0,
+            "confidence": confidence.GIVE_UP,
             "done_reason": "guard_failed" if not state.get("guard_ok") else "exec_failed",
         }
 
@@ -231,7 +231,7 @@ def repair_sql(state: ChatState) -> ChatState:
             "repair_count": repair_count,
             "give_up": True,
             "answer": "I couldn't build a safe query for that. Try rephrasing the question.",
-            "confidence": 0.0,
+            "confidence": confidence.GIVE_UP,
             "done_reason": "guard_failed" if not state.get("guard_ok") else "exec_failed",
         }
 
@@ -259,7 +259,7 @@ def generate_answer(state: ChatState) -> ChatState:
         answer += f"\n\n(Showing the first {config.MAX_ROWS} rows; there may be more.)"
 
     repairs = state.get("repair_count", 0)
-    confidence = 0.95 if repairs == 0 else (0.75 if repairs == 1 else 0.55)
+    confidence_value = confidence.for_successful_answer(repairs)
 
     history = state.get("history") or []
     new_history = history + [
@@ -270,7 +270,7 @@ def generate_answer(state: ChatState) -> ChatState:
     return {
         **state,
         "answer": answer,
-        "confidence": confidence,
+        "confidence": confidence_value,
         "done_reason": "answered",
         "new_history": new_history,
     }
