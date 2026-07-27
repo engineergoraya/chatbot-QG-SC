@@ -98,7 +98,8 @@ def chat(req: ChatRequest) -> ChatResponse:
     # If the previous turn asked for a time period, pair this reply with the
     # original question so the model can resolve it (see business_rules.py
     # rule 14). This is the ONE place multi-turn state changes the input.
-    if session.pending_question is not None:
+    is_clarification_reply = session.pending_question is not None
+    if is_clarification_reply:
         llm_question = (
             f'Earlier you (the assistant) asked the user for a time period '
             f'to answer this question: "{session.pending_question}". '
@@ -113,6 +114,7 @@ def chat(req: ChatRequest) -> ChatResponse:
         {
             "original_question": question,
             "llm_question": llm_question,
+            "is_clarification_reply": is_clarification_reply,
             "history": session.history,
             "repair_count": 0,
             "give_up": False,

@@ -120,7 +120,12 @@ def generate_sql(state: ChatState) -> ChatState:
 
     history = state.get("history") or []
     try:
-        sql = client.generate_sql(state["system_prompt"], history, state["llm_question"])
+        sql = client.generate_sql(
+            state["system_prompt"],
+            history,
+            state["llm_question"],
+            is_clarification_reply=state.get("is_clarification_reply", False),
+        )
     except Exception as e:
         return {
             **state,

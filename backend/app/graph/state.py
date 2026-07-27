@@ -19,6 +19,10 @@ class ChatState(TypedDict, total=False):
                                  # (may be original_question wrapped with
                                  # clarification context — see nodes.py)
     history: list[dict]         # prior SQL-gen turns for this session
+    is_clarification_reply: bool  # True when llm_question is a pending-
+                                   # question/reply pairing (see main.py) —
+                                   # changes which reminder generate_sql uses
+                                   # so it doesn't re-trigger rule 14
 
     # -- understand_question --
     is_definition: bool
