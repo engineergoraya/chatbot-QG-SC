@@ -365,6 +365,24 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      "Total shipping cost" means `v_shipment_metrics.total_logistics_cost` —
      it already sums every real cost column, so don't sum just one cost
      column and call it total.
+     "Freight cost per kg" and "average transit time" are ALSO already
+     precomputed on `v_shipment_metrics` (`cost_per_kg`, `transit_days`) —
+     use them DIRECTLY:
+       SELECT AVG(cost_per_kg) AS freight_cost_per_kg FROM v_shipment_metrics;
+       SELECT AVG(transit_days) AS avg_transit_days FROM v_shipment_metrics
+       WHERE transit_days IS NOT NULL;
+     `net_weight_kgs`/`gross_weight_kgs` exist on `export_shipments` (the
+     base table), NOT on `v_shipment_metrics` (the view) — do not mix a
+     view column like `total_logistics_cost` with a base-table-only weight
+     column in the same query (column-does-not-exist error); the view's
+     own `cost_per_kg` already did that division correctly, use it instead
+     of recomputing.
+     If AVG(transit_days) comes back 0 or very near 0, that IS the real
+     value stored in the view — do not silently fall back to a raw-column
+     recomputation to get a "nicer" number. Say the figure looks
+     unexpectedly low and may reflect a data-entry gap in the source
+     records, rather than asserting it confidently as a normal transit
+     time.
    - STATUS VOCABULARIES ARE DOMAIN-SPECIFIC — never reuse one domain's
      status strings on another table, or one column's values on a different
      column even within the same table.
@@ -409,8 +427,25 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
    - For "predict", "will", "likely to", "risk of" questions: answer using
      only observable current/historical patterns, and say plainly that it's
      based on current data, not a forecast.
-   - For "best" / "worst" / "most reliable" rankings: state exactly what
-     metric you ranked by. If based on sparse data, say so.
+   - For "best" / "worst" / "most reliable" rankings on a RATE or PERCENTAGE
+     (on-time %, delay %, completion %, any AVG(CASE...) or similar): a
+     supplier/entity with only 1-2 orders can trivially hit 100% and beat
+     one with 50 consistently-good orders — always include the underlying
+     COUNT alongside the rate, and prefer ranking among entities with a
+     minimum sample (e.g. `HAVING COUNT(*) >= 5`, adjust down only if that
+     empties the result). If you rank on the raw rate without a minimum
+     count, say explicitly in the answer that the top result has very few
+     orders and may not be a meaningful comparison — never present it as
+     "the best supplier" unqualified when it's a small-sample tie.
+     Worked example — "which supplier has the best on-time delivery?":
+       SELECT supplier, COUNT(*) AS orders,
+              AVG(CASE WHEN purchase <= required_d THEN 1 ELSE 0 END) * 100 AS on_time_pct
+       FROM purchases_data
+       WHERE purchase IS NOT NULL AND required_d IS NOT NULL
+       GROUP BY supplier
+       HAVING COUNT(*) >= 5
+       ORDER BY on_time_pct DESC, orders DESC
+       LIMIT 1
 
 14. TIME WINDOW — ASK before assuming one; default to 6 months only if the
     user declines to say.
