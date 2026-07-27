@@ -52,7 +52,12 @@ function ResultTable({ columns, rows }) {
 }
 
 function Message({ role, text, sql, confidence, columns, rows }) {
-  const hasTable = Array.isArray(rows) && rows.length > 1;
+  // Offer the table whenever the answer came from a query that returned
+  // ANY rows — including single-row aggregates. Previously this required
+  // more than one row, so "what is our inventory value?" (1 row) showed no
+  // table option while "which suppliers are delayed?" (84 rows) did, which
+  // made the button look like it appeared and vanished at random.
+  const hasTable = Array.isArray(rows) && rows.length > 0;
   const [showSql, setShowSql] = useState(false);
   // Collapsed by default: the answer should stay a short, readable summary.
   // The table is opt-in via the toggle for anyone who wants the detail.
@@ -67,7 +72,9 @@ function Message({ role, text, sql, confidence, columns, rows }) {
             {confidence !== undefined && <ConfidenceBadge value={confidence} />}
             {hasTable && (
               <button className="link-btn" onClick={() => setShowTable((s) => !s)}>
-                {showTable ? "hide table" : `show table (${rows.length} rows)`}
+                {showTable
+                  ? "hide table"
+                  : `show table (${rows.length} ${rows.length === 1 ? "row" : "rows"})`}
               </button>
             )}
             {sql && (
