@@ -15,6 +15,7 @@ module for details.
 from __future__ import annotations
 
 import json
+import time
 import uuid
 
 from fastapi import FastAPI
@@ -26,6 +27,7 @@ from app.db.introspect import introspect
 from app.graph.workflow import get_graph
 from app.knowledge.rag import get_index
 from app.llm.openai_client import get_client
+from app.logging_config import log_request
 from app.schemas import ChatRequest, ChatResponse
 from app.session_store import SessionData, SessionStore, get_store
 
@@ -106,17 +108,38 @@ def _prepare(req: ChatRequest) -> tuple[str, SessionStore, SessionData, dict]:
     return session_id, store, session, initial_state
 
 
-def _finalize(session_id: str, store: SessionStore, session: SessionData, result: dict) -> ChatResponse:
-    """Shared teardown: persist session memory and shape the final response
-    — identical payload whether it came from invoke() or the last chunk of
-    stream()."""
+def _guard_verdict(result: dict) -> str:
+    """Human-readable summary of what the guard/execution actually did,
+    for the structured log line (see app/logging_config.py)."""
+    done_reason = result.get("done_reason")
+    if done_reason in ("dictionary", "clarify", "error"):
+        return f"n/a ({done_reason})"
+    if done_reason == "guard_failed":
+        return "rejected"
+    if done_reason == "exec_failed":
+        return "passed_exec_failed"
+    if done_reason in ("empty", "answered"):
+        return "passed"
+    return "unknown"
+
+
+def _finalize(
+    session_id: str,
+    store: SessionStore,
+    session: SessionData,
+    result: dict,
+    start_time: float | None = None,
+) -> ChatResponse:
+    """Shared teardown: persist session memory, log the request, and shape
+    the final response — identical payload whether it came from invoke()
+    or the last chunk of stream()."""
     if result.get("needs_clarification"):
         session.pending_question = result.get("original_question") or session.pending_question
     else:
         session.history = result.get("new_history", session.history)
     store.save(session_id, session)
 
-    return ChatResponse(
+    response = ChatResponse(
         answer=result.get("answer") or "I could not find sufficient information in the available supply chain data.",
         sql_used=result.get("safe_sql"),
         confidence=float(result.get("confidence", 0.0)),
@@ -125,6 +148,20 @@ def _finalize(session_id: str, store: SessionStore, session: SessionData, result
         columns=result.get("columns"),
         rows=result.get("rows"),
     )
+
+    log_request(
+        question=result.get("original_question", ""),
+        sql_used=response.sql_used,
+        guard_verdict=_guard_verdict(result),
+        repair_count=int(result.get("repair_count", 0)),
+        row_count=result.get("row_count"),
+        latency_ms=(time.monotonic() - start_time) * 1000 if start_time is not None else -1.0,
+        confidence=response.confidence,
+        done_reason=result.get("done_reason"),
+        session_id=session_id,
+    )
+
+    return response
 
 
 @app.post("/api/chat", response_model=ChatResponse)
@@ -138,10 +175,11 @@ def chat(req: ChatRequest) -> ChatResponse:
             session_id=req.session_id or str(uuid.uuid4()),
         )
 
+    start_time = time.monotonic()
     session_id, store, session, initial_state = _prepare(req)
     result = get_graph().invoke(initial_state)
     result.setdefault("original_question", question)
-    return _finalize(session_id, store, session, result)
+    return _finalize(session_id, store, session, result, start_time=start_time)
 
 
 # Which of the graph's actual node names corresponds to which of the four
@@ -173,6 +211,7 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
     returns (so a client can ignore the progress events entirely and just
     read the last one if it wants)."""
     question = req.question.strip()
+    start_time = time.monotonic()
 
     def gen():
         if not question:
@@ -204,7 +243,7 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
             yield _sse("error", {"message": f"Stream interrupted: {e}"})
 
         last_state.setdefault("original_question", question)
-        response = _finalize(session_id, store, session, last_state)
+        response = _finalize(session_id, store, session, last_state, start_time=start_time)
         yield _sse("result", response.model_dump())
 
     return StreamingResponse(

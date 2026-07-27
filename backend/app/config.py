@@ -51,6 +51,9 @@ CORS_ORIGINS = [o.strip() for o in _get("CORS_ORIGINS", "http://localhost:5173")
 REDIS_URL = _get("REDIS_URL")
 REDIS_SESSION_TTL_SECONDS = int(_get("REDIS_SESSION_TTL_SECONDS", str(24 * 3600)))
 
+# Structured request logging — see app/logging_config.py.
+LOG_LEVEL = _get("LOG_LEVEL", "INFO")
+
 
 def _dsn_from_url(url: str) -> dict:
     p = urlparse(url)
