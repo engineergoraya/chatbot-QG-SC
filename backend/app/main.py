@@ -132,4 +132,6 @@ def chat(req: ChatRequest) -> ChatResponse:
         confidence=float(result.get("confidence", 0.0)),
         session_id=session_id,
         needs_clarification=bool(result.get("needs_clarification")),
+        columns=result.get("columns"),
+        rows=result.get("rows"),
     )
