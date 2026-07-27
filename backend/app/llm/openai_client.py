@@ -72,14 +72,19 @@ _RETRY_DELAYS = (2, 4, 8)    # seconds between attempts 1->2, 2->3, 3->4
 # The follow-up variant instead explicitly tells the model the period is
 # already resolved, so it must proceed straight to SQL.
 _GENERATION_REMINDER_FRESH = (
-    "\n\nBefore answering: (1) if this aggregates/counts/ranks a dated "
-    "transaction table (purchases_data, issuance, import_details/"
-    "shipment_details, exports/export_shipments, store_requisition, "
-    "shifting_movements) and no time period is stated anywhere in the "
-    "question, output ONLY the CLARIFY_TIME_PERIOD line per rule 14 — do "
-    "not silently assume all-time. (2) if this is a STOCK quantity "
-    "question, join items and include items.uom on every quantity per "
-    "rule 5."
+    "\n\nBefore answering: (1) rule 14 applies ONLY to a HISTORICAL "
+    "total/average/ranking over a date RANGE on a dated transaction table "
+    "(e.g. 'total purchases', 'average delay', 'what did X consume') where "
+    "no period is stated — for those, output ONLY the CLARIFY_TIME_PERIOD "
+    "line, do not silently assume all-time. Rule 14 does NOT apply to a "
+    "CURRENT status/snapshot question — 'how many are on water/in transit "
+    "right now', 'which items need reorder', 'which items are critical', "
+    "any stock-level question — those describe the PRESENT state and have "
+    "no time period to ask for at all; answer them directly with SQL, "
+    "never CLARIFY_TIME_PERIOD. If genuinely unsure which kind this is, "
+    "prefer answering directly over asking. (2) if this is a STOCK "
+    "quantity question, join items and include items.uom on every "
+    "quantity per rule 5."
 )
 _GENERATION_REMINDER_FOLLOWUP = (
     "\n\nThis message is the user's reply to your own earlier "

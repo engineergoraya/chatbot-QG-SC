@@ -33,6 +33,25 @@ from app.db.introspect import Schema
 BUSINESS_RULES = """\
 VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly):
 
+0. INVENTORY VALUE — stock.available_amount is authoritative, PER ROW.
+   - The `stock.available_amount` column already holds the correct current
+     usable inventory value for that item+branch row. USE IT DIRECTLY:
+     SUM(available_amount).
+   - NEVER compute inventory value as `available_qty * stock_qty_amount`,
+     `available_qty * anything`, or any other multiplication.
+     `stock_qty_amount` is the value of the TOTAL physical quantity
+     (including held/blocked stock, a DIFFERENT figure) — multiplying it
+     again by available_qty double-counts and is wrong, not just
+     imprecise.
+   - Worked example — "current available inventory value":
+       SELECT SUM(available_amount) AS inventory_value_pkr FROM stock;
+     (optionally GROUP BY branch or JOIN items for a category breakdown —
+     but the value column is always available_amount, never derived).
+   - "Total/physical stock value" (INCLUDING held stock, a different,
+     larger figure than "available") means SUM(stock_qty_amount) instead —
+     only use this when the user explicitly asks about held/blocked/total
+     physical stock, not for a plain "inventory value" question.
+
 1. ISSUANCE VALUE — total_price is authoritative.
    - The `issuance.total_price` column already holds the correct issued value
      for each line. USE IT DIRECTLY.
@@ -58,11 +77,24 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      * purchase    = date it was actually purchased.
    - SUPPLIER DELAY (against the deadline) = purchase - required_d (days).
      Positive = late, negative/zero = on or before required date.
-     Example: `SELECT supplier, AVG(purchase - required_d) AS avg_delay_days
-     FROM purchases_data
-     WHERE purchase IS NOT NULL AND required_d IS NOT NULL
-     GROUP BY supplier`.
-     "Late" means delay > 0 unless the user gives a different threshold.
+     "Late"/"delayed" means delay > 0 unless the user gives a different
+     threshold — this is a FILTER, not just a fact to mention afterward.
+     Two DIFFERENT questions need two DIFFERENT queries — do not conflate
+     them:
+       * "What is each supplier's average delay?" (descriptive, no filter):
+         `SELECT supplier, AVG(purchase - required_d) AS avg_delay_days
+          FROM purchases_data
+          WHERE purchase IS NOT NULL AND required_d IS NOT NULL
+          GROUP BY supplier`
+         — this legitimately includes negative (early) averages; do not
+         call those suppliers "delayed" in the answer.
+       * "WHICH suppliers are late/delayed?" (a filtered list — the
+         common phrasing): add `HAVING AVG(purchase - required_d) > 0`
+         (or filter individual late rows with `WHERE purchase > required_d`
+         for a per-order list) so only genuinely late suppliers/orders are
+         returned. This is the correct query for "which suppliers are
+         delayed" — never return unfiltered averages (including negative
+         ones) and label them all "delayed".
    - PROCUREMENT LEAD TIME (demand raised to purchase made) =
      AVG(purchase - ppc_store) — a plain average of day-differences.
    - NEVER use required_d as the "demand" date — it is a deadline, not when
@@ -226,13 +258,21 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      group to a table in the other — it always produces garbage.
 
 9. IMPORT STATUS AND DATES (import_details / shipment_details).
-   - `import_details.current_status` real values include: 'Arrived at Works',
+   - `current_status` is a column on `import_details` ONLY — it does NOT
+     exist on `shipment_details`. Real values include: 'Arrived at Works',
      'Under Production', 'In Transit', 'On Road', 'Ready Awaiting Sailing',
      'Under Custom Clearance', 'Under De-Stuffing', 'T/T in Process',
      'LC in Process', 'Costing in Process', 'Arrived at QFL',
      'Order Cancelled'.
-   - "On water" means `current_status = 'In Transit'` — an inbound shipment
-     at sea. Distinct from 'Ready Awaiting Sailing' (still at origin port,
+   - "On water" means `import_details.current_status = 'In Transit'` — an
+     inbound shipment at sea. If the query joins shipment_details (e.g. to
+     COUNT shipments), the status filter must still read
+     `import_details.current_status` — using the shipment_details alias
+     for this column (e.g. `sd.current_status`) is a column-does-not-exist
+     error; always qualify it with the import_details alias, e.g.
+     `SELECT COUNT(*) FROM import_details id WHERE id.current_status =
+     'In Transit'` needs no join to shipment_details at all for a plain
+     count. Distinct from 'Ready Awaiting Sailing' (still at origin port,
      vessel not yet departed).
    - "Ongoing" / "in progress" / "currently" (not yet completed) means:
      `current_status NOT IN ('Arrived at Works', 'Order Cancelled')`.
@@ -264,6 +304,13 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
    - `import_details` (import_ref, current_status, total_value_pkr, supplier,
      demand_date, req_date, po_number) vs `shipment_details` (batch_no,
      eta_final, etd, free_days, last_free_day, mode_of_shipment, pol, pod).
+     `current_status` belongs to `import_details` ONLY — when the query
+     joins both tables (e.g. `import_details id JOIN shipment_details sd
+     ON sd.import_id = id.import_id`), the status filter MUST be
+     `id.current_status`, never `sd.current_status` (that column does not
+     exist on shipment_details and the query will error). Likewise
+     `batch_no` and every ETA/ETD/date column belong to `shipment_details`
+     ONLY, never `import_details`.
    - `exports` (exp_no, batch_no, CUSTOMER, shipping_agent, bank, payment_term,
      bl_type, sailing_date, gate_out_date, handed_over_to) vs `export_shipments`
      (shipment_stage, shipment_status, s_agent, c_agent, s_line, weights/pkgs,
