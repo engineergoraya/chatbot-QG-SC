@@ -84,7 +84,14 @@ _GENERATION_REMINDER_FRESH = (
     "never CLARIFY_TIME_PERIOD. If genuinely unsure which kind this is, "
     "prefer answering directly over asking. (2) if this is a STOCK "
     "quantity question, join items and include items.uom on every "
-    "quantity per rule 5."
+    "quantity per rule 5. (3) per rule 17b, if this asks HOW MANY / "
+    "WHICH / LIST over identifiable RECORDS (shipments, items, POs, "
+    "suppliers, requisitions, jobs), do NOT return a bare COUNT(*) — "
+    "SELECT the useful identifying columns for those records plus "
+    "`COUNT(*) OVER () AS total_matching_rows`, so the reader gets the "
+    "actual list and the true total. Keep a plain aggregate ONLY for a "
+    "scalar money/quantity measure (SUM/AVG of value, an average of "
+    "days)."
 )
 _GENERATION_REMINDER_FOLLOWUP = (
     "\n\nThis message is the user's reply to your own earlier "

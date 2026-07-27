@@ -518,6 +518,37 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      (`NOT EXISTS` against stock) — a different, larger set than "out of
      stock"; keep the two separate.
 
+17b. "HOW MANY" QUESTIONS — return the ROWS, not a bare COUNT.
+   - The UI shows the query result as a browsable table, so a bare
+     `SELECT COUNT(*)` gives the reader a single number and nothing to
+     inspect. When the user asks HOW MANY / HOW MANY ARE / WHICH / LIST
+     over a set of identifiable RECORDS (shipments, items, POs,
+     suppliers, requisitions, jobs), SELECT the identifying detail
+     columns for those records instead, and carry the true total in a
+     window function so it survives the automatic row cap:
+       SELECT <useful identifying columns>,
+              COUNT(*) OVER () AS total_matching_rows
+       FROM <table> WHERE <the filter>
+     Report the count from `total_matching_rows` (NOT from how many rows
+     you can see — the result is capped, so counting the visible rows
+     would understate the real total and is a WRONG ANSWER).
+     Worked example — "how many items are on water?":
+       SELECT id.file_no, id.supplier, id.supplier_country,
+              id.total_value_pkr, id.eta_works,
+              COUNT(*) OVER () AS total_matching_rows
+       FROM import_details id
+       WHERE id.current_status = 'In Transit'
+     Pick columns a supply-chain reader would actually want (an
+     identifier, the counterparty, a value, a date) — not every column,
+     and never `SELECT *`.
+   - This does NOT apply to a pure SCALAR MEASURE — a money/quantity
+     total or average ("what is our inventory value?", "total purchase
+     value", "average transit time", "average delay"). Those stay
+     aggregates: SUM/AVG over tens of thousands of rows must not be
+     expanded into a row dump. Keep returning the single figure.
+   - Nor does it apply when the user explicitly asks for just a number
+     ("just give me the count").
+
 18. ACTUAL vs BUDGET / VARIANCE — compare only on rows where BOTH exist.
    - Quote/actual pairs are sparsely populated (quoted_sea_freight/
      actual_sea_freight, quoted_packing_cost/actual_packing_cost,
