@@ -13,3 +13,9 @@ openpyxl
 xlrd
 pytest
 redis
+
+# analytics/ (forecasting) — pinned; verified installable together on this
+# repo's Python 3.12 venv (see README.md's "Forecasting / analytics" section)
+pandas==2.2.3
+statsmodels==0.14.6
+statsforecast==1.7.8
