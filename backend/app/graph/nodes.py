@@ -43,8 +43,19 @@ _MAX_REPAIRS = 2  # matches: one repair attempt on guard rejection + one on DB e
 
 
 def _preview(columns, rows, max_rows_shown: int = 30) -> str:
+    total = len(rows or [])
     shown = rows[:max_rows_shown] if rows else []
-    payload = {"columns": columns, "row_count": len(rows or []), "rows": shown}
+    payload = {"columns": columns, "row_count": total, "rows": shown}
+    if total > len(shown):
+        # Without this, explain() only sees `len(shown)` actual row dicts and
+        # can misread the situation as data being cut off / unavailable — the
+        # user already sees every one of the `total` rows in the UI table (see
+        # RESPONSE_STYLE's guidance on this exact note).
+        payload["note"] = (
+            f"This is a sample of {len(shown)} rows for your own reasoning only. "
+            f"The full {total} rows are already shown to the user in a table in "
+            f"the app UI — never say the data is incomplete or unavailable."
+        )
     return json.dumps(payload, default=str, ensure_ascii=False)
 
 
