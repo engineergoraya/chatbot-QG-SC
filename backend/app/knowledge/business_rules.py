@@ -300,6 +300,13 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
        AND import_details.current_status NOT IN ('Arrived at Works', 'Order Cancelled')
      ORDER BY eta_final ASC (most overdue first); (CURRENT_DATE - eta_final)
      gives days overdue.
+   - "Demurrage / detention risk" (a container held past its free days at
+     port, triggering charges) means:
+       shipment_details.gate_out IS NULL
+       AND shipment_details.last_free_day <= CURRENT_DATE + INTERVAL '3 days'
+     (still not gated out, and its free-days window has expired or is
+     about to). Report free_days and last_free_day so the reader sees the
+     margin, and only include rows where last_free_day is populated.
    - For "next" / "upcoming" / "soonest" / "when will ... arrive" questions
      about a FUTURE event, filter the date column to `>= CURRENT_DATE` and
      ORDER BY it ASC — never return a past/overdue date for a "next" question.
@@ -421,6 +428,20 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      .tracking_status each only ever hold 'Delivered' or NULL. "Not
      delivered/pending" = the column IS NULL — say the progress is
      UNREPORTED rather than asserting it is actively pending.
+   - store_requisition.status has 18 real values, verified against live
+     data: 'Issued' (most common), 'InStock', 'Partial Issued', 'GatePass',
+     'Sourced', 'Procuring', 'Preparing', 'PartialInStock', 'VCDelivered',
+     'Delivered', 'PartialGatePass', 'OutSourcing', 'Sourcing',
+     'VCPartialDelivered', 'StoreRejected', 'VCInprocess',
+     'Store Filtering', 'Delivering'. There is NO value containing
+     'pending' — CONFIRMED zero rows match `status ILIKE '%pending%'`.
+     "Pending/open requisition" instead means
+     `store_requisition.pending_quantity > 0` — filter on that column, never
+     on status text. Still-open-by-workflow-stage (a different, narrower
+     question) means status IN ('Preparing', 'Procuring', 'Sourced',
+     'Sourcing', 'OutSourcing'); fulfilled/closed means status IN
+     ('Issued', 'Delivered', 'GatePass', 'PartialGatePass', 'VCDelivered',
+     'VCPartialDelivered'). Never invent a status value not in this list.
 
 13. BE HONEST ABOUT WHAT THIS SYSTEM CAN'T DO. It answers ONE question with
     ONE query against real, current data — it has no forecasting model.
@@ -593,6 +614,68 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      the truth is "no upcoming import; on current stock alone you have N
      days". Always return the item's row and state which pieces were
      missing.
+
+22. LEFT JOIN WHEN ENRICHING, INNER JOIN ONLY WHEN FILTERING — a COUNT and
+    the detail rows behind it must always agree.
+   - When a table is already matched (by a WHERE filter or another join)
+     and you join to a FURTHER table only to pull descriptive columns for
+     it (a name, a category, a customer, a sailing date) rather than to
+     filter on it, that join MUST be a LEFT JOIN. An INNER JOIN there
+     silently drops every already-matched row whose foreign key happens
+     to be NULL — no error, no warning, just a smaller number.
+   - This is not a theoretical risk in this data — it is VERIFIED and
+     severe: `packing_details.export_id` is NULL in 1258 of 1375 rows
+     (91%); `export_shipments.export_id` is NULL in 50 of 165 rows (30%).
+     Any query joining EITHER of those tables to `exports` (e.g. for
+     customer name or sailing_date) MUST use LEFT JOIN — an INNER JOIN
+     silently discards the great majority of packing_details rows and a
+     meaningful share of export_shipments rows. The same applies to
+     `items` when enriching stock/issuance/purchases_data/import_item
+     with a name/uom/category: JOIN on item_code is usually safe (most
+     rows have a valid item_code), but if a query is specifically about
+     "how many X" for a table where item_code can be missing or invalid,
+     LEFT JOIN items rather than assume the inner join is harmless.
+   - The self-check that catches this: if a plain `COUNT(*) FROM t WHERE
+     <filter>` and a detail query `SELECT ... FROM t JOIN <enrichment>
+     WHERE <same filter>` would return different totals, the detail
+     query's join should be a LEFT JOIN, not an INNER JOIN. Getting a
+     count and getting the rows behind that count must always agree —
+     see rule 17b, which now returns detail rows for "how many" questions
+     specifically because of this risk.
+
+23. RANKING TIES — a "top N" is meaningless without knowing how many tie.
+   - For any "top / bottom / highest / lowest N" ranking, add a column
+     `tie_count` = `COUNT(*) OVER (PARTITION BY <the exact expression you
+     rank on>)`. This is computed across the WHOLE result before any
+     LIMIT, so it reveals how many entities share each ranked value even
+     though only N rows are returned — e.g. if 871 items are all at zero
+     stock, `tie_count` on the lowest-stock ranking shows 871, not 1.
+     Keep a deterministic secondary ORDER BY (e.g. item_code) so which N
+     of the tied rows appear is stable across repeat runs.
+   - When explaining a ranking result, check `tie_count`: if it is
+     greater than 1 for the shown rows, say how many entities share that
+     value rather than presenting the sample as a strict, meaningful
+     ranking (e.g. "871 items are out of stock; here are 5 of them" —
+     not "the top 5 lowest-stock items are ..." when they are ties among
+     hundreds).
+
+24. DO NOT COMPUTE ADVANCED STATISTICS IN SQL, AND NEVER RETURN NESTED/JSON
+    COLUMNS.
+   - Correlation coefficients, regressions, p-values, percentiles tied to
+     a statistical test, concentration indices (Gini/HHI), coefficient of
+     variation, and z-scores are easy to get subtly wrong in raw SQL, and
+     this system has no downstream statistics engine to verify them.
+     Plain aggregates (COUNT, SUM, AVG, MIN, MAX, a simple GROUP BY) are
+     fine. If a question genuinely needs one of the harder statistics,
+     say plainly that this system can't compute it reliably and offer the
+     raw underlying figures instead (per rule 13) — never approximate it
+     yourself in SQL or in the final answer.
+   - Results are rendered as a browsable table, so return FLAT scalar
+     columns only. Do NOT use `json_agg`, `array_agg`, `json_build_object`,
+     or return an array/JSON-typed column — those render as unreadable
+     stringified blobs in the table UI. To show detail across a
+     dimension (e.g. stock per branch), return one row per group with
+     plain columns instead of packing them into a nested structure.
 """
 
 
@@ -648,6 +731,16 @@ real records, not a vague summary):
 - Currency is PKR unless the data indicates otherwise.
 - MAXIMUM 3-4 lines/sentences. Professional, concise, decision-oriented —
   this is read by supply-chain staff and management, not developers.
+- If a row carries `tie_count` greater than 1 (see rule 23), say how many
+  entities share that ranked value rather than presenting the shown rows
+  as a strict top-N — e.g. "217 items are ranked critical; here are 3 of
+  them," not "the top 3 critical items are ...".
+- The result preview you're given is a SAMPLE — the note on it tells you
+  the true row count when it's larger than what's shown. The user already
+  sees every matching row in a table in the app UI. Never say the data is
+  incomplete or that you can't show the rest; if you need to reference the
+  fuller set, point to the table ("see the full list of N below") rather
+  than listing rows one by one beyond the 2-3 examples this style needs.
 """
 
 
