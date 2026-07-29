@@ -10,5 +10,6 @@ langchain-core
 pypdf
 scikit-learn
 openpyxl
+xlrd
 pytest
 redis
