@@ -27,8 +27,20 @@ User question
                                      (capped at 2 attempts), looping back
                                      through validate_sql
        generate_answer              - GPT-4o-mini explains the result
+       forecast_answer               - forecasting intents only (see below):
+                                     explains a projection instead
   -> JSON { answer, sql_used, confidence, session_id, columns, rows }
 ```
+
+**Forecasting** branches off the same graph, not a separate agent: when
+`generate_sql` recognizes a forecast/projection intent, it writes a plain
+historical SELECT (one row per month) instead of a final answer, prefixed
+with a `FORECAST: horizon=<n>` sentinel line. That SQL runs through the
+EXACT SAME `validate_sql`/`execute_sql` as any other query — no new write
+path, no relaxed guard — and only the answer stage branches to
+`forecast_answer`, which hands the rows to `app/analytics/` (pandas +
+statsmodels + statsforecast) for a deterministic, backtested projection.
+See "Forecasting / analytics" below for detail.
 
 Safety is layered: (1) the SQL guard rejects anything that isn't a single
 read-only `SELECT`/CTE referencing real tables, and (2) even if that were
@@ -48,6 +60,9 @@ was produced, not a calibrated probability: 1.0 for a static glossary hit,
 0.95 for clean SQL on the first try, 0.75/0.55 if 1/2 repairs were needed,
 0.6 for a query that ran correctly but matched nothing, 0.4 while a
 clarifying question is pending, 0.0 when nothing usable could be produced.
+A forecast tops out at 0.7 (0.5/0.35 at moderate/low backtest confidence)
+even at its best — it's a projection, never as trustworthy as an observed
+fact — and 0.2 when there wasn't enough history to forecast at all.
 
 ## Project layout
 
@@ -65,8 +80,9 @@ backend/                FastAPI + LangGraph backend
       state.py, nodes.py, workflow.py   the LangGraph state machine
       guard.py                           the SQL safety guard
       confidence.py                      the documented confidence scheme
-    llm/                 OpenAI client wrapper (generate/repair/explain,
-                          retry-with-backoff on transient errors)
+    llm/                 OpenAI client wrapper (generate/repair/explain/
+                          explain_forecast, retry-with-backoff on transient
+                          errors)
     knowledge/
       business_rules.py   verified, live-schema business rules (system prompt)
       dictionary.py        fast-path glossary answers (no SQL, no DB hit)
@@ -75,11 +91,23 @@ backend/                FastAPI + LangGraph backend
       reference_data/       business_dictionary.json, synonym map, the
                              ORIGINAL planned schema (kept for reference only
                              — NOT authoritative; see business_rules.py)
+    analytics/            forecasting — separate from the graph/knowledge
+                          layers, no DB code of its own (see below)
+      series.py             pure pandas time-series builder from query rows
+      forecasting.py         backtested model bank + selection (statsmodels
+                              SARIMA/Holt-Winters, statsforecast Croston)
+  database/                ETL loaders that (re)populate the SAME Postgres DB
+                          the chatbot reads from — separate from app/,
+                          nothing here is imported by the running chatbot.
+                          See backend/database/README.md before running
+                          anything here: load_all.py DROPS and rebuilds
+                          every table, deliberately not automated.
   scripts/
     setup_readonly_role.sql   one-time: creates the chatbot_ro DB role
     smoke_test.py              manual run of the 7 required acceptance questions
     test_fixtures/              the 100-question acceptance test bank (xlsx)
-  tests/                  pytest unit tests (resilience, session store)
+  tests/                  pytest unit tests (resilience, session store,
+                          analytics/series.py, analytics/forecasting.py)
   requirements.txt
   .env.example
 
@@ -184,6 +212,48 @@ data: {"answer": "...", "sql_used": "...", "confidence": 0.95, ...}
 A client that doesn't care about progress can ignore every event except
 the last.
 
+## Forecasting / analytics
+
+Ask a forecast/projection question directly — no separate endpoint:
+
+```
+"Forecast issuance demand for item 2075-60 for the next 3 months"
+"How much of resin A-85 will we need next quarter?"
+```
+
+`generate_sql` recognizes the intent and writes a plain historical SELECT
+(one row per month, columns aliased `period`/`value`) instead of a final
+answer, through the same item-resolution rules as any other question. That
+SQL runs through the identical guard + read-only executor as every other
+query — forecasting adds no new write path and does not relax the guard.
+`app/analytics/series.py` turns the rows into a regular, gap-filled pandas
+Series (missing months = 0 activity, not unknown); `app/analytics/
+forecasting.py` backtests a small model bank on a held-out tail and keeps
+whichever actually predicted best:
+
+| Series shape | Candidates tried | Typically wins |
+|---|---|---|
+| Regular, ≥ ~1.5 seasonal cycles of history | mean, linear, seasonal-naive, Holt-Winters, SARIMA | Holt-Winters or SARIMA |
+| Intermittent (≥35% zero periods) — e.g. slow-moving spare parts | mean, linear, seasonal-naive, Croston | Croston, though a simpler baseline can occasionally win a very short/noisy backtest — this is an honest property of backtesting on few held-out points, not a bug |
+| Too short (< 4 periods) or all-zero | — | none — returns `ok: false` and a plain reason instead of a guessed number |
+
+The LLM never does this arithmetic — it only decides *that* a forecast is
+wanted and *which* item/history to pull; the maths is deterministic and
+reproducible given the same series. `explain_forecast` (mirroring `explain`)
+then reports the engine's own numbers, method, and confidence interval in
+plain English — it cannot invent or adjust a figure.
+
+No Prophet — pinned deps are `pandas==2.2.3`, `statsmodels==0.14.6`
+(0.14.4 conflicts with this repo's already-installed scipy — see the
+dependency commit), `statsforecast==1.7.8`.
+
+The `database/` ETL loaders (ported from a teammate's separate repo — see
+`backend/database/README.md`) are how you get a fuller history into
+Postgres for these forecasts to actually run on; the live DB currently has
+only a few months of issuance history, which is why most real forecasts
+today land at "low" confidence with a wide interval — that's the engine
+being honest about thin data, not a defect.
+
 ## Environment variables
 
 See `backend/.env.example` for the full, authoritative list. Summary:
@@ -205,7 +275,8 @@ See `backend/.env.example` for the full, authoritative list. Summary:
 
 ```bash
 cd backend
-pytest                     # unit tests: OpenAI retry/backoff, session store
+pytest                     # unit tests: OpenAI retry/backoff, session store,
+                            # analytics/series.py, analytics/forecasting.py
 python scripts/smoke_test.py   # the 7 required acceptance questions, against
                                 # the live DB + a real OpenAI key
 ```
