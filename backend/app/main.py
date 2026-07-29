@@ -119,7 +119,7 @@ def _guard_verdict(result: dict) -> str:
         return "rejected"
     if done_reason == "exec_failed":
         return "passed_exec_failed"
-    if done_reason in ("empty", "answered"):
+    if done_reason in ("empty", "answered", "forecast"):
         return "passed"
     return "unknown"
 
@@ -208,6 +208,7 @@ _NODE_TO_EVENT = {
     "execute_sql": "running_query",
     "generate_answer": "explaining",
     "conversational_answer": "explaining",
+    "forecast_answer": "explaining",
 }
 
 

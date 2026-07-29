@@ -22,6 +22,7 @@ generate a query" / "couldn't build a safe query" fallback answers).
 
 from __future__ import annotations
 
+import json
 import re
 import time
 
@@ -126,6 +127,45 @@ _CONVERSATIONAL_ESCAPE = (
     "those are real data questions; write SQL for them as normal."
 )
 
+# Third sentinel escape: a genuine forecasting/projection intent ("forecast
+# demand for X", "how much will we need next quarter", "projected demand",
+# "when will we run out of Y"). Per business_rules.py rule 13, this system
+# has no forecasting model of its own for the LLM to reason with in SQL —
+# app/analytics/forecasting.py does the actual maths, deterministically, on
+# a plain historical series. This escape hatch is how the two meet: the
+# model still writes ONE ordinary SELECT (so it goes through the SAME guard
+# + executor as any other query — no new write path, no relaxed guard), but
+# aggregated to one row per period rather than a final analytical answer.
+_FORECAST_ESCAPE = (
+    "\n\nTHIRD ESCAPE HATCH: if this question asks to FORECAST/PROJECT future "
+    "demand, consumption, or reorder timing (\"forecast demand for X\", \"how "
+    "much will we need next quarter\", \"projected demand for Y\", \"when will "
+    "we run out of Z\") — do NOT write a final analytical answer yourself. "
+    "Instead:\n"
+    "  1. Resolve the target item per rule 5 (exact item_code, or item+specs, "
+    "including the punctuation-insensitive grade/code matching rule 5 "
+    "describes) and branch if named.\n"
+    "  2. Write ONE SELECT returning that item's HISTORICAL monthly activity "
+    "as a plain two-column time series, grouped by calendar month and "
+    "aliased EXACTLY `period` and `value` (nothing else on those two "
+    "columns) — e.g. for issuance/consumption history:\n"
+    "       SELECT date_trunc('month', i.from_date)::date AS period, "
+    "SUM(i.quantity) AS value\n"
+    "       FROM issuance i JOIN items it ON i.item_code = it.item_code\n"
+    "       WHERE <item filter> AND i.status NOT IN ('HoldIssuence', 'Hold')\n"
+    "       GROUP BY period ORDER BY period\n"
+    "     Use purchases_data instead of issuance if the question is about "
+    "purchase/procurement volume rather than consumption.\n"
+    "  3. Prefix your ENTIRE response with exactly one line before that SQL "
+    "(nothing else on that line):\n"
+    "       FORECAST: horizon=<n>\n"
+    "     where <n> is how many future periods the user asked for (default "
+    "3 if unspecified). The SQL follows on the next line(s).\n"
+    "This does NOT apply to a plain historical-trend or current-reorder-"
+    "level question with no forward projection asked for — those still get "
+    "a normal analytical SQL answer as usual."
+)
+
 CONVERSATIONAL_PREFIX = "CONVERSATIONAL:"
 
 
@@ -199,7 +239,7 @@ class OpenAIClient:
                 "content": (
                     "Write ONE PostgreSQL SELECT query that answers the question below. "
                     "Return ONLY the SQL — no explanation, no markdown fences.\n\n"
-                    f"Question: {question}" + reminder + _CONVERSATIONAL_ESCAPE
+                    f"Question: {question}" + reminder + _CONVERSATIONAL_ESCAPE + _FORECAST_ESCAPE
                 ),
             }
         ]
@@ -272,6 +312,59 @@ class OpenAIClient:
         ]
         text = self._chat(messages, temperature=0)
         return _strip_fences(text)
+
+    # -- Forecast explanation ----------------------------------------------
+    def explain_forecast(
+        self,
+        question: str,
+        result: dict,
+        transcript: list[dict] | None = None,
+    ) -> str:
+        """Turn an app.analytics.forecasting.forecast_series() result into
+        the user-facing answer. Mirrors explain(), but the source of truth
+        is the forecast dict (method/forecast/confidence_interval/reason),
+        never the raw historical rows — the model reports what the
+        deterministic forecasting engine already computed, it does not
+        recompute or estimate a number itself."""
+        if not self.available:
+            raise RuntimeError("OpenAI unavailable.")
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You explain a demand forecast to Qadri Group supply-chain "
+                    "staff.\n\n" + RESPONSE_STYLE + "\n"
+                    "- The forecast JSON below is the ONLY source for any number, "
+                    "method name, or confidence claim — never invent or adjust a "
+                    "figure yourself, and never silently switch to a different "
+                    "unit/timeframe than what's given.\n"
+                    "- If `ok` is false, say plainly that there isn't enough "
+                    "history to forecast this reliably, state the `reason` given, "
+                    "and do NOT report a number as if it were a real projection.\n"
+                    "- If `ok` is true, state the projected figure(s) for the "
+                    "requested horizon, name the method chosen (e.g. 'Holt-"
+                    "Winters', 'Croston' — Croston means intermittent/spare-part-"
+                    "style demand, mention that plainly when intermittent_demand "
+                    "is true), and give the confidence interval and confidence "
+                    "label in one plain sentence — this is a projection from "
+                    "historical data, not a guarantee, and the answer should read "
+                    "that way.\n"
+                    "- Earlier turns may be shown before the current question, for "
+                    "CONTINUITY only."
+                ),
+            },
+            *(transcript or []),
+            {
+                "role": "user",
+                "content": (
+                    f"User question: {question}\n\n"
+                    f"Forecast result:\n{json.dumps(result, default=str, ensure_ascii=False)}\n\n"
+                    "Write the answer now."
+                ),
+            },
+        ]
+        text = self._chat(messages, temperature=0.2)
+        return text.strip()
 
     # -- Explanation ------------------------------------------------------
     def explain(

@@ -42,6 +42,15 @@ class ChatState(TypedDict, total=False):
                                  # CONVERSATION itself ("what did I ask
                                  # first?", "explain that more simply") and
                                  # needs the transcript, not a SQL query
+    is_forecast: bool           # True when this is a forecasting intent —
+                                 # `sql` is a plain historical-series SELECT
+                                 # (columns aliased period/value), executed
+                                 # through the SAME guard/executor as any
+                                 # other query; only the answer stage
+                                 # branches to forecast_answer instead of
+                                 # generate_answer (see workflow.py)
+    forecast_horizon: int        # periods ahead requested (see nodes.py's
+                                  # FORECAST: sentinel parsing)
 
     # -- validate_sql --
     guard_ok: bool
@@ -56,7 +65,7 @@ class ChatState(TypedDict, total=False):
     row_count: int
     truncated: bool
 
-    # -- generate_answer / control --
+    # -- generate_answer / forecast_answer / control --
     answer: str | None
     confidence: float
     repair_count: int
@@ -64,4 +73,7 @@ class ChatState(TypedDict, total=False):
     new_history: list[dict]     # history to persist back into the session
     done_reason: str            # "dictionary" | "clarify" | "guard_failed" |
                                  # "exec_failed" | "empty" | "answered" |
-                                 # "conversational" | "error"
+                                 # "conversational" | "forecast" | "error"
+    forecast_result: dict | None  # app.analytics.forecasting.forecast_series()
+                                   # output, or an {"ok": False, "reason": ...}
+                                   # dict — see nodes.forecast_answer

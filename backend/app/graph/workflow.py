@@ -41,6 +41,8 @@ def _route_after_execute(state: ChatState) -> str:
         return "repair_sql"
     if state.get("row_count", 0) == 0:
         return END  # "no matching rows" answer already set
+    if state.get("is_forecast"):
+        return "forecast_answer"
     return "generate_answer"
 
 
@@ -60,6 +62,7 @@ def build_graph():
     graph.add_node("execute_sql", nodes.execute_sql)
     graph.add_node("repair_sql", nodes.repair_sql)
     graph.add_node("generate_answer", nodes.generate_answer)
+    graph.add_node("forecast_answer", nodes.forecast_answer)
 
     graph.set_entry_point("understand")
 
@@ -84,13 +87,19 @@ def build_graph():
     )
     graph.add_conditional_edges(
         "execute_sql", _route_after_execute,
-        {END: END, "generate_answer": "generate_answer", "repair_sql": "repair_sql"},
+        {
+            END: END,
+            "generate_answer": "generate_answer",
+            "forecast_answer": "forecast_answer",
+            "repair_sql": "repair_sql",
+        },
     )
     graph.add_conditional_edges(
         "repair_sql", _route_after_repair,
         {END: END, "validate_sql": "validate_sql"},
     )
     graph.add_edge("generate_answer", END)
+    graph.add_edge("forecast_answer", END)
 
     return graph.compile()
 

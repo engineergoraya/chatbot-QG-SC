@@ -48,6 +48,18 @@ Scheme, highest to lowest trust:
     kept erroring), or a hard failure before that (no API key, an
     exception calling the LLM). Zero, not a small positive number — there
     is nothing here to trust.
+
+  FORECAST_HIGH/MODERATE/LOW (0.7 / 0.5 / 0.35)
+    A projection (app/analytics/forecasting.py), never as high as CLEAN_SQL
+    even at its best — it's a projection from historical data, not an
+    observed fact — scaled by the forecasting engine's own backtest-derived
+    confidence label (see for_forecast() below).
+
+  FORECAST_INSUFFICIENT_HISTORY (0.2)
+    The historical query ran fine, but there wasn't enough usable history
+    to forecast responsibly — the answer says so plainly instead of
+    guessing a number. Low, like GIVE_UP, but not zero: "we can't forecast
+    this reliably" is itself a correct, honest answer, not a failure.
 """
 
 from __future__ import annotations
@@ -61,6 +73,10 @@ CONVERSATIONAL = 0.9
 CLARIFICATION_NEEDED = 0.4
 GIVE_UP = 0.0
 CONFIG_OR_GENERATION_ERROR = 0.0
+FORECAST_HIGH = 0.7
+FORECAST_MODERATE = 0.5
+FORECAST_LOW = 0.35
+FORECAST_INSUFFICIENT_HISTORY = 0.2
 
 
 def for_successful_answer(repair_count: int) -> float:
@@ -71,3 +87,15 @@ def for_successful_answer(repair_count: int) -> float:
     if repair_count == 1:
         return REPAIRED_ONCE
     return REPAIRED_TWICE
+
+
+def for_forecast(result: dict) -> float:
+    """Confidence for a forecast_series() result — see the module docstring."""
+    if not result.get("ok"):
+        return FORECAST_INSUFFICIENT_HISTORY
+    label = result.get("confidence")
+    if label == "high":
+        return FORECAST_HIGH
+    if label == "moderate":
+        return FORECAST_MODERATE
+    return FORECAST_LOW

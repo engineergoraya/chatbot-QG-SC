@@ -25,6 +25,7 @@ requirement).
 from __future__ import annotations
 
 import json
+import re
 
 from app.db import executor
 from app.db.introspect import introspect
@@ -40,6 +41,11 @@ _DEFAULT_CLARIFY_TEXT = (
     "For what time period should I calculate this? (e.g. 3 months, 6 months, 1 year)"
 )
 _MAX_REPAIRS = 2  # matches: one repair attempt on guard rejection + one on DB error
+
+_FORECAST_PREFIX = "FORECAST:"
+_FORECAST_HORIZON_RE = re.compile(r"horizon\s*=\s*(\d+)", re.IGNORECASE)
+_DEFAULT_FORECAST_HORIZON = 3
+_MAX_FORECAST_HORIZON = 24
 
 
 def _preview(columns, rows, max_rows_shown: int = 30) -> str:
@@ -163,6 +169,35 @@ def generate_sql(state: ChatState) -> ChatState:
     if sql.strip().startswith(CONVERSATIONAL_PREFIX):
         # Not a data question — answered from the transcript instead.
         return {**state, "sql": None, "is_conversational": True, "needs_clarification": False}
+
+    if sql.strip().startswith(_FORECAST_PREFIX):
+        # First line carries the sentinel + params; everything after it is a
+        # normal SELECT (columns aliased period/value — see the reminder in
+        # openai_client.py) that goes through the SAME guard/executor as any
+        # other query. Only the answer stage branches (see workflow.py).
+        first_line, _, rest = sql.strip().partition("\n")
+        horizon_match = _FORECAST_HORIZON_RE.search(first_line)
+        horizon = _DEFAULT_FORECAST_HORIZON
+        if horizon_match:
+            horizon = max(1, min(int(horizon_match.group(1)), _MAX_FORECAST_HORIZON))
+        forecast_sql = rest.strip()
+        if not forecast_sql:
+            return {
+                **state,
+                "answer": "Could not generate a query for that forecast — no SQL followed the FORECAST directive.",
+                "confidence": confidence.CONFIG_OR_GENERATION_ERROR,
+                "done_reason": "error",
+                "sql": None,
+                "needs_clarification": False,
+            }
+        return {
+            **state,
+            "sql": forecast_sql,
+            "is_forecast": True,
+            "forecast_horizon": horizon,
+            "needs_clarification": False,
+            "repair_count": state.get("repair_count", 0),
+        }
 
     return {**state, "sql": sql, "needs_clarification": False, "repair_count": state.get("repair_count", 0)}
 
@@ -318,5 +353,58 @@ def generate_answer(state: ChatState) -> ChatState:
         "answer": answer,
         "confidence": confidence_value,
         "done_reason": "answered",
+        "new_history": new_history,
+    }
+
+
+def forecast_answer(state: ChatState) -> ChatState:
+    """Turn the historical-series query result into a forecast.
+
+    `rows` came from the SAME guard-validated, read-only SELECT as any other
+    query (see generate_sql's FORECAST: sentinel handling and workflow.py's
+    routing) — this node only shapes those rows into a series and hands them
+    to the deterministic forecasting engine; it never writes SQL or touches
+    the DB itself. The LLM's only remaining job (explain_forecast) is to
+    describe the forecast dict in plain English, not to compute anything.
+    """
+    from app.analytics.forecasting import forecast_series
+    from app.analytics.series import build_series
+
+    horizon = state.get("forecast_horizon") or _DEFAULT_FORECAST_HORIZON
+    try:
+        series = build_series(state["rows"], "period", "value", freq="monthly")
+        result = forecast_series(series, horizon=horizon)
+    except Exception as e:
+        result = {
+            "ok": False,
+            "reason": f"Could not build a forecast from the query result ({e}).",
+        }
+
+    client = get_client()
+    try:
+        answer = client.explain_forecast(
+            state["llm_question"], result, transcript=state.get("transcript") or []
+        )
+    except Exception:
+        if result.get("ok"):
+            answer = (
+                f"Projected {result['method']} forecast for the next {result['horizon']} "
+                f"period(s): {result['forecast']} (confidence: {result['confidence']})."
+            )
+        else:
+            answer = result.get("reason", "Not enough history to forecast this reliably.")
+
+    history = state.get("history") or []
+    new_history = history + [
+        {"role": "user", "content": state["llm_question"]},
+        {"role": "assistant", "content": state["safe_sql"]},
+    ]
+
+    return {
+        **state,
+        "forecast_result": result,
+        "answer": answer,
+        "confidence": confidence.for_forecast(result),
+        "done_reason": "forecast",
         "new_history": new_history,
     }
