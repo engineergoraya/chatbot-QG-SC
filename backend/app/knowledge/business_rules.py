@@ -176,6 +176,24 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      never label a company-wide total as "per branch". A branch with no
      issuance history has a NULL daily_usage — say the figure is unknown for
      that branch rather than treating it as 0.
+   - PROJECTED NEXT-ORDER DATE ("when should we reorder", "when will we run
+     out", "based on current stock and usage trend"): this is a CURRENT
+     snapshot projection, not a historical total — it does NOT need a time
+     period from the user (do not trigger rule 14 for it) and it does NOT
+     need item entity matching to be item-code-vs-branch AND'd together
+     the way rule 5 warns about for multi-grade items. Build it from the
+     SAME ingredients as reorder_level above, in one query:
+       days_of_stock_left  = available_qty / NULLIF(branch_daily_usage, 0)
+       days_until_reorder  = (available_qty - reorder_level) / NULLIF(branch_daily_usage, 0)
+       projected_reorder_date = CURRENT_DATE + days_until_reorder (days_until_reorder
+         may be negative — that means the item is ALREADY below its reorder
+         point today; say so plainly rather than reporting a past date as if
+         it were a future recommendation).
+     A branch/item outside ab_items' two-branch coverage, or with zero
+     issuance history (NULL daily_usage), CANNOT be projected — say so
+     rather than guessing. Per rule 13, always add one line that this is a
+     projection from current stock and historical average usage, not a
+     demand forecast (no seasonality/trend modeling).
 
 5. JOIN KEY — item_code is the canonical key everywhere, and it is opaque.
    - Join stock / issuance / purchases_data to `items` on `item_code`.
@@ -201,6 +219,24 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
               coalesce(i.material_standard,'')||' '||coalesce(i.item_category,'')||' '||
               coalesce(i.specs,'')) ILIKE '%hard%'
          AND (…same blob…) ILIKE '%coke%'
+   - GRADE/CODE-LIKE WORDS (a letter+number token such as "a85", "sae304",
+     "cc2085", or a bare number like "1085") are frequently stored WITH
+     punctuation the user won't type — e.g. specs = 'A-85', not 'A85'.
+     CONFIRMED in live data: item 16425-60 is Resin/A-85, 24612-60 is
+     Resin/1085, 26287-60 is Resin/"A-85 / 103 / 1085" (all three grades on
+     one row). A plain `ILIKE '%a85%'` against 'A-85' fails on the hyphen
+     and silently returns zero rows — it looks like the item doesn't exist
+     when it does. For any grade/code-shaped word, ALSO strip punctuation
+     from both sides before matching (same technique as rule 15's supplier
+     matching):
+       WHERE regexp_replace(lower(coalesce(i.item,'')||' '||coalesce(i.specs,'')||' '||
+             coalesce(i.group_name,'')||' '||coalesce(i.material_standard,'')||' '||
+             coalesce(i.item_category,'')), '[^a-z0-9]', '', 'g')
+             ILIKE '%' || regexp_replace(lower('a85'), '[^a-z0-9]', '', 'g') || '%'
+     If the user names several such grades for the same base item (e.g.
+     "resin a85 and 1085"), treat them as an OR across rows (each grade may
+     be a DIFFERENT item_code), not an AND on one row — return all matching
+     rows rather than assuming a single item.
    - When displaying a quantity, also join items and include `items.uom` if it
      helps the reader understand the number (e.g. "150 KG" vs. a bare "150").
      Whenever the user asks about STOCK specifically, this is not optional:
@@ -487,7 +523,16 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
    - WHEN NO PERIOD IS NAMED and the question is one of the triggering
      kinds: do NOT write SQL and do NOT silently assume a window. Instead
      output ONLY this one line (nothing else — no SQL, no markdown):
-       CLARIFY_TIME_PERIOD: <a short, specific version of the question>
+       CLARIFY_TIME_PERIOD: <a short question that explicitly ASKS FOR A
+       TIME PERIOD, in the form "For what time period should I calculate
+       <the specific thing>?" — e.g. "For what time period should I
+       calculate total purchases by branch?">
+     Do NOT just restate or rephrase the user's original question back at
+     them (e.g. do not answer "When should we calculate X?" to a question
+     that already asked "when should X happen" — that reads as an echo,
+     not a request for missing information, and confuses the user). The
+     output must name the concrete missing input (a time period) every
+     time, never rephrase the question itself.
      This is the ONE exception to "always return SQL" in the SQL contract.
    - The next user message will be their answer to that question (it
      arrives paired with the original question for context):

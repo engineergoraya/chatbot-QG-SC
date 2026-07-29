@@ -79,6 +79,8 @@ _GENERATION_REMINDER_FRESH = (
     "line, do not silently assume all-time. Rule 14 does NOT apply to a "
     "CURRENT status/snapshot question — 'how many are on water/in transit "
     "right now', 'which items need reorder', 'which items are critical', "
+    "'when should we reorder/order next' (a projection off CURRENT stock + "
+    "historical usage rate, see rule 4's projected-reorder-date formula), "
     "any stock-level question — those describe the PRESENT state and have "
     "no time period to ask for at all; answer them directly with SQL, "
     "never CLARIFY_TIME_PERIOD. If genuinely unsure which kind this is, "
