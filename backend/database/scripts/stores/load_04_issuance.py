@@ -21,12 +21,11 @@ This version:
 Run directly:  python -m database.scripts.stores.load_04_issuance
 """
 
-from pathlib import Path
-
-import pandas as pd
 from psycopg2.extras import execute_values
 
-from database.scripts.etl_common import clean_text, clean_int, clean_date, clean_number
+from backend.database.scripts.etl_common import (
+    clean_text, clean_int, clean_date, clean_number, data_files, read_first_sheet,
+)
 
 # Order of columns must match the order of ISSUANCE_HEADERS below.
 ISSUANCE_COLUMNS = [
@@ -50,33 +49,11 @@ _ITEM_CODE_IDX = ISSUANCE_COLUMNS.index("item_code")
 _KEY_HEADERS = {"ItemCode", "Quantity", "FromDate"}
 
 
-def _read_any_sheet(file_path: Path):
-    """Read the issuance sheet - 'Sheet1' if present, else the first sheet."""
-    xl = pd.ExcelFile(file_path)
-    sheet = "Sheet1" if "Sheet1" in xl.sheet_names else xl.sheet_names[0]
-    df = xl.parse(sheet)
-    df.columns = (
-        df.columns.astype(str)
-        .str.strip()
-        .str.replace("\n", " ", regex=False)
-        .str.replace(r"\s+", " ", regex=True)
-    )
-    df = df.dropna(how="all")
-    return df, sheet
-
-
-def _parse_files(directory: Path):
-    files = sorted(
-        p for p in directory.iterdir() if p.suffix.lower() in (".xls", ".xlsx")
-    )
-    if not files:
-        print(f"  no .xls/.xlsx files in {directory}")
-        return []
-
+def _parse_files(files):
     rows = []
     for f in files:
         try:
-            df, sheet = _read_any_sheet(f)
+            df, sheet = read_first_sheet(f)
         except Exception as exc:
             print(f"  SKIP {f.name}: could not read ({exc})")
             continue
@@ -155,10 +132,9 @@ def _insert_rows(conn, cur, rows):
 
 
 def load_issuances(conn):
-    # stores -> scripts -> database -> project root, then data/issuances.
-    directory = Path(__file__).resolve().parents[3] / "data" / "issuances"
-    print(f"Reading issuance files from {directory} ...")
-    rows = _parse_files(directory)
+    files = data_files("issuances")
+    print(f"Reading issuance files from {files[0].parent} ...")
+    rows = _parse_files(files)
     if not rows:
         print("Issuances: nothing to load")
         return
@@ -172,6 +148,6 @@ def load_issuances(conn):
 
 
 if __name__ == "__main__":
-    from database.connection.database_connection import connection
+    from backend.database.connection.database_connection import connection
 
     load_issuances(connection)

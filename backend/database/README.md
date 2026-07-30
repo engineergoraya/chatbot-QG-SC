@@ -13,8 +13,10 @@ imported by the FastAPI app.
 
 ## 1. Provide the source workbooks
 
-Drop your own Excel exports into `backend/data/<domain>/` (this folder is
-gitignored — the workbooks themselves are never committed):
+Drop your own Excel exports into `backend/database/data/<domain>/` (this
+folder is gitignored — the workbooks themselves are never committed). For
+backwards compatibility `backend/data/<domain>/` is also searched, and the
+first location that actually contains a workbook wins.
 
 | Folder                         | Expected content                                    |
 |---------------------------------|-----------------------------------------------------|
@@ -27,23 +29,29 @@ gitignored — the workbooks themselves are never committed):
 | `data/logistics/`                    | Logistics master workbook (exports/shipments/etc.) |
 | `data/imports/`                       | Import Status Sheet                                 |
 
-Each loader reads every file in its folder (`Path.iterdir()`), so a folder
-must contain at least one file before that loader runs, or it fails with a
-clear `IndexError`/`FileNotFoundError` rather than silently skipping.
+Every loader resolves its folder through `etl_common.data_file()` /
+`data_files()`, which returns the `.xls`/`.xlsx`/`.xlsm` files in name order
+and ignores `.DS_Store` and Excel lock files (`~$...`). A folder with no
+workbook raises a `FileNotFoundError` naming the folder and the paths that
+were searched, rather than an anonymous `IndexError`.
 
 ## 2. Run the load
 
 ```bash
-cd backend
-source venv/bin/activate
-python -m database.scripts.load_all
+source backend/venv/bin/activate
+python backend/database/scripts/load_all.py
 ```
+
+`load_all.py` puts both the repo root and `backend/` on `sys.path` itself, so
+it runs from any working directory and needs no `PYTHONPATH`. Running it as a
+module (`python -m backend.database.scripts.load_all`, from the repo root)
+works too.
 
 **WARNING — this is destructive.** `load_all.py` starts with:
 
 ```sql
 DROP TABLE IF EXISTS export_documents, export_shipments, exports,
-  import_details, import_item, issuance, items, suppliers,
+  import_details, import_item, issuance, items,
   store_requisition, stock, shipment_details, shipment_containers,
   shifting_movements, purchase_order, payment_history,
   packing_details, purchases_data, ab_items CASCADE;

@@ -12,11 +12,57 @@ Requires:  pip install pandas openpyxl psycopg2-binary
 """
 
 import re
+from pathlib import Path
+
 import pandas as pd
 from psycopg2.extras import execute_values
 
 # Values that mean "no data" in the workbook
 PLACEHOLDERS = {"-", "--", "---", "", "n/a", "na", "nil", "none", "tbd"}
+
+
+# ---------------------------------------------------------------------------
+# Source workbook location
+# ---------------------------------------------------------------------------
+# Every loader used to re-derive its own `.../data/<folder>` path with a
+# hand-counted `parents[n]`, which silently resolved to an empty directory and
+# then died on `files[0]` with an IndexError that named nothing. Resolve it
+# once, here, against both layouts that exist in this repo, and fail with a
+# message that says which folder was empty.
+
+_BACKEND_DIR = Path(__file__).resolve().parents[2]          # .../backend
+_DATA_ROOTS = (_BACKEND_DIR / "database" / "data", _BACKEND_DIR / "data")
+
+WORKBOOK_SUFFIXES = (".xls", ".xlsx", ".xlsm")
+
+
+def data_files(folder: str) -> list[Path]:
+    """Every workbook in `data/<folder>/`, sorted by name.
+
+    Skips .DS_Store, Excel lock files (`~$...`) and anything that isn't a
+    spreadsheet, so a stray file can't be picked up as the source.
+    """
+    for root in _DATA_ROOTS:
+        directory = root / folder
+        if not directory.is_dir():
+            continue
+        found = sorted(
+            p for p in directory.iterdir()
+            if p.suffix.lower() in WORKBOOK_SUFFIXES and not p.name.startswith("~$")
+        )
+        if found:
+            return found
+
+    searched = "\n  ".join(str(root / folder) for root in _DATA_ROOTS)
+    raise FileNotFoundError(
+        f"No {'/'.join(WORKBOOK_SUFFIXES)} workbook found for data folder "
+        f"'{folder}'. Looked in:\n  {searched}"
+    )
+
+
+def data_file(folder: str) -> Path:
+    """The single source workbook in `data/<folder>/` (first one, sorted)."""
+    return data_files(folder)[0]
 
 
 # ---------------------------------------------------------------------------
@@ -150,9 +196,27 @@ def read_sheet(sheet_name, file_path) -> pd.DataFrame:
     return df
 
 
+def _clean_columns(columns):
+    return (
+        pd.Index(columns).astype(str)
+        .str.strip()
+        .str.replace("\n", " ", regex=False)
+        .str.replace(r"\s+", " ", regex=True)
+    )
+
+
 def read_first_sheet(file_path, prefer="Sheet1") -> pd.DataFrame:
     """
     Read a workbook's sheet defensively: `prefer` if present, else the first.
+    Also stitches on any OTHER sheet in the workbook that has the same column
+    count as the header sheet, treating it as headerless continuation data.
+
+    Why: the legacy .xls (BIFF) format caps a sheet at 65,536 rows. A report
+    that exceeds that limit spills onto a second sheet with NO header row of
+    its own. Reading only `prefer` would silently drop that entire spillover
+    sheet; reading it naively would treat its first data row as a header and
+    misalign every column. Any sheet whose width matches the header sheet is
+    assumed to be exactly this kind of continuation.
 
     Cleans column names the same way as read_sheet. Used by the resilient
     loaders so a file whose sheet is not literally named 'Sheet1' still loads.
@@ -160,13 +224,22 @@ def read_first_sheet(file_path, prefer="Sheet1") -> pd.DataFrame:
     xl = pd.ExcelFile(file_path)
     sheet = prefer if prefer in xl.sheet_names else xl.sheet_names[0]
     df = xl.parse(sheet)
-    df.columns = (
-        df.columns.astype(str)
-        .str.strip()
-        .str.replace("\n", " ", regex=False)
-        .str.replace(r"\s+", " ", regex=True)
-    )
-    return df.dropna(how="all"), sheet
+    df.columns = _clean_columns(df.columns)
+
+    frames = [df]
+    for other in xl.sheet_names:
+        if other == sheet:
+            continue
+        cont = xl.parse(other, header=None)
+        if cont.shape[1] != df.shape[1]:
+            continue  # different shape -> a real separate sheet, not overflow
+        cont.columns = df.columns
+        print(f"  {Path(file_path).name}: '{other}' looks like a row-limit "
+              f"continuation of '{sheet}' ({len(cont)} rows) — appending")
+        frames.append(cont)
+
+    out = pd.concat(frames, ignore_index=True) if len(frames) > 1 else df
+    return out.dropna(how="all"), sheet
 
 
 def pick(row, *candidates):

@@ -1,9 +1,9 @@
 """Load the Store Requisitions table - resilient (see etl_common.resilient_load)."""
 
-from pathlib import Path
 
-from database.scripts.etl_common import (
+from backend.database.scripts.etl_common import (
     clean_text, clean_number, clean_date, read_first_sheet, resilient_load,
+    data_files,
 )
 
 STORE_REQUISITION_COLUMNS = [
@@ -28,9 +28,8 @@ _ITEM_CODE_IDX = STORE_REQUISITION_COLUMNS.index("item_code")
 
 
 def load_store_requisitions(conn):
-    directory = Path(__file__).resolve().parents[3] / "data" / "store_requisitions"
-    files = sorted(p for p in directory.iterdir() if p.suffix.lower() in (".xls", ".xlsx"))
-    print(f"Reading store-requisition files from {directory} ...")
+    files = data_files("store_requisitions")
+    print(f"Reading store-requisition files from {files[0].parent} ...")
 
     rows = []
     for f in files:
@@ -55,6 +54,6 @@ def load_store_requisitions(conn):
 
 
 if __name__ == "__main__":
-    from database.connection.database_connection import connection
+    from backend.database.connection.database_connection import connection
 
     load_store_requisitions(connection)

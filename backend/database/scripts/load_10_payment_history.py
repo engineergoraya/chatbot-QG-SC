@@ -18,7 +18,7 @@ INSERT — TRUNCATE payment_history before reloading.
 Usage:  python -m database.scripts.load_10_payment_history
 """
 
-from database.scripts.etl_stores_imports import (
+from backend.database.scripts.etl_stores_imports import (
     read_import_rows, import_ref_for, load_import_map, load_shipment_by_import,
     bulk_insert, clean_text, clean_number, clean_date,
 )

@@ -1,58 +1,78 @@
-from database.scripts.logistics.load_01_exports import load_exports
-from database.scripts.logistics.load_02_export_documentation import load_export_documenttion
-from database.scripts.logistics.load_03_shipments import load_export_shipments
-from database.scripts.logistics.load_04_packing import load_packing
-from database.scripts.logistics.load_05_shifting import load_shifting
-from database.scripts.stores.load_01_items import load_items
-from database.scripts.stores.load_03_purchase_order import load_purchase_orders
-from database.scripts.stores.load_02_purchases_data import load_purchases
-from database.scripts.stores.load_04_issuance import load_issuances
-from database.scripts.stores.load_06_store_requisitions import load_store_requisitions
-from database.scripts.stores.load_05_stock import load_stock
-from database.scripts.stores.load_07_ab_items import load_ab_items
-from database.schemas.logistics_schemas import logistics_schemas_queries
-from database.schemas.logistics_views import logistics_views_queries
-from database.schemas.imports_schemas import imports_schemas_queries
-from database.schemas.stores_schemas import stores_schemas_queries
-from database.schemas.create_schemas import execute_queries
-from database.connection.database_connection import cursor
-
 """
 load_all.py — one-shot loader for the whole database (logistics + imports).
 
 It performs a CLEAN reload: the transaction tables are truncated first, then
-repopulated from the source workbooks in the `Project Files/` folder. The
-master tables (items / suppliers / purchase_order) are upserted idempotently,
+repopulated from the source workbooks under `backend/database/data/`. The
+master tables (items / purchase_order) are upserted idempotently,
 so they are not truncated.
 
-Source paths are resolved here (from `Project Files/`) and injected into the
-loader modules, so the modules keep their own placeholder paths untouched.
+Source workbooks are located by etl_common.data_file() / data_files(), which
+each loader calls for itself — nothing is injected from here any more.
 
-Usage:  python -m database.scripts.load_all
+Usage (from anywhere):  python backend/database/scripts/load_all.py
+        or, from the repo root:  python -m backend.database.scripts.load_all
 """
 
+# --- import bootstrap -------------------------------------------------------
+# The loaders import as `backend.database.*` (repo root on sys.path) while
+# database_connection imports `app.config` (backend/ on sys.path). Put BOTH on
+# the path so this runs as a plain script or with -m, from any working
+# directory, without the caller having to set PYTHONPATH.
+import sys
 from pathlib import Path
 
-# Loader modules (imported as modules so we can point them at the real files).
-import database.scripts.etl_common as etl_common
-import database.scripts.etl_stores_imports as etl_si
-import database.scripts.load_06_import_masters as load_06
+_BACKEND_DIR = Path(__file__).resolve().parents[2]          # .../backend
+for _root in (_BACKEND_DIR, _BACKEND_DIR.parent):
+    if str(_root) not in sys.path:
+        sys.path.insert(0, str(_root))
+
+from backend.database.scripts.logistics.load_01_exports import load_exports
+from backend.database.scripts.logistics.load_02_export_documentation import load_export_documenttion
+from backend.database.scripts.logistics.load_03_shipments import load_export_shipments
+from backend.database.scripts.logistics.load_04_packing import load_packing
+from backend.database.scripts.logistics.load_05_shifting import load_shifting
+from backend.database.scripts.stores.load_01_items import load_items
+from backend.database.scripts.stores.load_03_purchase_order import load_purchase_orders
+from backend.database.scripts.stores.load_02_purchases_data import load_purchases
+from backend.database.scripts.stores.load_04_issuance import load_issuances
+from backend.database.scripts.stores.load_06_store_requisitions import load_store_requisitions
+from backend.database.scripts.stores.load_05_stock import load_stock
+from backend.database.scripts.stores.load_07_ab_items import load_ab_items
+from backend.database.schemas.logistics_schemas import logistics_schemas_queries
+from backend.database.schemas.logistics_views import logistics_views_queries
+from backend.database.schemas.imports_schemas import imports_schemas_queries
+from backend.database.schemas.stores_schemas import stores_schemas_queries
+from backend.database.schemas.create_schemas import execute_queries
+from backend.database.connection.database_connection import cursor
+
+import backend.database.scripts.etl_common as etl_common
 
 # Imports module
-from database.scripts.load_06_import_masters import load_import_masters
-from database.scripts.load_07_import_details import load_import_details
-from database.scripts.load_08_import_items import load_import_items
-from database.scripts.load_09_shipment_details import load_shipment_details
-from database.scripts.load_10_payment_history import load_payment_history
-from database.connection.database_connection import connection
-from pathlib import Path
+from backend.database.scripts.load_06_import_masters import load_import_masters
+from backend.database.scripts.load_07_import_details import load_import_details
+from backend.database.scripts.load_08_import_items import load_import_items
+from backend.database.scripts.load_09_shipment_details import load_shipment_details
+from backend.database.scripts.load_10_payment_history import load_payment_history
+from backend.database.connection.database_connection import connection
+
+# ---------------------------------------------------------------------------
+# Source workbooks. Every loader resolves its own file through
+# etl_common.data_file()/data_files(), which searches this project's own
+# data/ folder — never a sibling project directory. Resolved up here as well,
+# so a missing workbook fails loudly BEFORE anything is dropped.
+# ---------------------------------------------------------------------------
+
+LOGISTICS_FILE = etl_common.data_file("logistics")
+IMPORTS_FILE = etl_common.data_file("imports")
+print(f"Logistics source: {LOGISTICS_FILE}")
+print(f"Imports source:   {IMPORTS_FILE}\n")
 
 # ---------------------------------------------------------------------------
 # Deleting old data
 # ---------------------------------------------------------------------------
 print("Deleting old data...\n")
 
-cursor.execute('DROP TABLE IF EXISTS export_documents,export_shipments,exports,import_details,import_item,issuance,items,suppliers,store_requisition,stock,shipment_details,shipment_containers,shifting_movements,purchase_order,payment_history,packing_details, purchases_data, ab_items CASCADE;')
+cursor.execute('DROP TABLE IF EXISTS export_documents,export_shipments,exports,import_details,import_item,issuance,items,store_requisition,stock,shipment_details,shipment_containers,shifting_movements,purchase_order,payment_history,packing_details, purchases_data, ab_items CASCADE;')
 
 connection.commit()
 
@@ -64,32 +84,9 @@ print("Old data deleted succcessfully...\n")
 execute_queries(logistics_schemas_queries, "Logistics", "schemas")
 
 execute_queries(logistics_views_queries, "Logistics", "views")
-# imports MUST run before stores — it creates the shared masters (items, suppliers, purchase_order)
+# imports MUST run before stores — it creates the shared masters (items, purchase_order)
 execute_queries(imports_schemas_queries, "Imports", "schemas")
 execute_queries(stores_schemas_queries, "Stores", "schemas")
-
-# ---------------------------------------------------------------------------
-# Point every loader at the real source workbooks, in THIS project's own
-# data/ folder - never a sibling project directory. A hardcoded path outside
-# the project breaks the load entirely on any other machine/checkout, and
-# silently loads stale data if the two ever drift.
-# ---------------------------------------------------------------------------
-
-current_dir = Path(__file__).resolve().parent
-project_root = current_dir.parents[1]
-directory = project_root / "data" / "logistics"
-
-files = list(directory.iterdir())
-LOGISTICS_FILE = files[0]
-etl_common.EXCEL_FILE = LOGISTICS_FILE
-
-directory = project_root / "data" / "imports"
-files = list(directory.iterdir())
-IMPORTS_FILE = files[0]
-
-_import_xlsx = str(IMPORTS_FILE)
-etl_si.IMPORT_FILE = _import_xlsx      # read_import_rows() reads this global
-load_06.IMPORT_FILE = _import_xlsx     # load_06 reads its own module global
 
 
 def truncate_transaction_tables():
@@ -130,7 +127,7 @@ load_data("Stocks", load_stock)
 load_data("Store Requisitions", load_store_requisitions)
 load_data("AB Items", load_ab_items)
 
-# --- Imports (masters first: items / suppliers / purchase_order) ---
+# --- Imports (masters first: items / purchase_order) ---
 load_data("Import Masters", load_import_masters)
 load_data("Import Details", load_import_details)
 load_data("Import Items", load_import_items)

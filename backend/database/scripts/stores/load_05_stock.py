@@ -1,9 +1,9 @@
 """Load the Main Stocks table - resilient (see etl_common.resilient_load)."""
 
-from pathlib import Path
 
-from database.scripts.etl_common import (
+from backend.database.scripts.etl_common import (
     clean_text, clean_number, read_first_sheet, resilient_load,
+    data_files,
 )
 
 STOCK_COLUMNS = [
@@ -21,9 +21,8 @@ _ITEM_CODE_IDX = STOCK_COLUMNS.index("item_code")
 
 
 def load_stock(conn):
-    directory = Path(__file__).resolve().parents[3] / "data" / "stocks"
-    files = sorted(p for p in directory.iterdir() if p.suffix.lower() in (".xls", ".xlsx"))
-    print(f"Reading stock files from {directory} ...")
+    files = data_files("stocks")
+    print(f"Reading stock files from {files[0].parent} ...")
 
     rows = []
     for f in files:
@@ -48,6 +47,6 @@ def load_stock(conn):
 
 
 if __name__ == "__main__":
-    from database.connection.database_connection import connection
+    from backend.database.connection.database_connection import connection
 
     load_stock(connection)

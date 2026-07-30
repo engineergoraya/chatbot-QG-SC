@@ -18,7 +18,7 @@ CASCADE before reloading.
 
 Usage:  python -m database.scripts.load_07_import_details
 """
-from database.scripts.etl_stores_imports import (
+from backend.database.scripts.etl_stores_imports import (
     read_import_rows, import_ref_for, bulk_insert,
     clean_text, clean_number, clean_date,
     resolve_import_currencies, get_pkr_rates,

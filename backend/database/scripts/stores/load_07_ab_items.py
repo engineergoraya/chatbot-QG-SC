@@ -1,16 +1,11 @@
 """Load AB items table"""
 
 import pandas as pd
-from database.scripts.etl_common import (
-    read_sheet, clean_text, clean_date, clean_int
+from backend.database.scripts.etl_common import (
+    read_sheet, clean_text, clean_date, clean_int,
+    data_file,
 )
-from pathlib import Path
-current_dir = Path(__file__).resolve().parent
-directory = Path(current_dir.parents[2] / "data" / "ab_items")
-
-files = list(directory.iterdir())
-
-EXCEL_FILE = files[0]
+EXCEL_FILE = data_file("ab_items")
 
 #Order of columns matters here (must be same as order of ROWS list)
 AB_ITEMS_COLUMNS = ["item_code", "branch_name", "rank", "safety_days",  "lead_time_days"]

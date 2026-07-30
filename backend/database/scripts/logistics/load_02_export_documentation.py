@@ -22,18 +22,12 @@ Usage:  python load_02_export_documentation.py
 """
 
 from psycopg2.extras import execute_values
-from database.scripts.etl_common import (
+from backend.database.scripts.etl_common import (
     read_sheet, make_export_key, clean_text, clean_status, clean_date,
     load_export_map,
+    data_file,
 )
-from pathlib import Path
-
-current_dir = Path(__file__).resolve().parent
-directory = Path(current_dir.parents[2] / "data" / "logistics")
-
-files = list(directory.iterdir())
-
-EXCEL_FILE = files[0]
+EXCEL_FILE = data_file("logistics")
 
 # Excel status column -> (party, document_type)
 STATUS_MAP = {

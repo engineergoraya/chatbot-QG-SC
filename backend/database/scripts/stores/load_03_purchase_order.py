@@ -2,17 +2,12 @@
    Table and creates a link between imports
    and purchases"""
 
-import pandas as pd
-from database.scripts.etl_common import (
-    read_sheet, clean_text, clean_date
+from backend.database.scripts.etl_common import (
+    clean_text, clean_date, pick, data_files, read_first_sheet,
 )
-from pathlib import Path
-current_dir = Path(__file__).resolve().parent
-directory = Path(current_dir.parents[2] / "data" / "purchases")
-
-files = list(directory.iterdir())
-
-EXCEL_FILE = files[0]
+# Every workbook in data/purchases/ is read (not just one) — the 2023-2026
+# export sits alongside the older report, and both carry PO numbers.
+EXCEL_FILES = data_files("purchases")
 
 #Order of columns matters here (must be same as order of columns in sheet)
 PURCHASES_COLUMNS = [
@@ -21,23 +16,25 @@ PURCHASES_COLUMNS = [
 ]
 
 def load_purchase_orders(conn):
-    df = read_sheet("Sheet1", EXCEL_FILE)
     purchase_order_rows = []
-    po_number_history = []
 
     with conn.cursor() as cur:
             cur.execute(
                 "SELECT po_number from purchase_order" #--> getting already existing purchase orders
             )
-            po_number_history = [row[0] for row in cur.fetchall()]
+            po_number_history = {row[0] for row in cur.fetchall()}
 
-    for _, row in df.iterrows():
-        if(clean_text(row.get("PO Numbe")) not in po_number_history):
-            po_number_history.append(clean_text(row.get("PO Numbe")))
-            purchase_order_rows.append((
-                clean_text(row.get("PO Numbe")),
-                clean_date(row.get("PO Date")),
-            ))
+    for f in EXCEL_FILES:
+        df, sheet = read_first_sheet(f)
+        print(f"  {f.name} [{sheet}]: {len(df)} rows")
+        for _, row in df.iterrows():
+            po_number = clean_text(pick(row, "PO Numbe", "PO Number"))
+            if po_number is not None and po_number not in po_number_history:
+                po_number_history.add(po_number)
+                purchase_order_rows.append((
+                    po_number,
+                    clean_date(pick(row, "PO Date")),
+                ))
 
     with conn.cursor() as cur:
         for row in purchase_order_rows:
@@ -49,4 +46,4 @@ def load_purchase_orders(conn):
             )
 
     conn.commit()
-    print(f"Purchases : inserted {len(purchase_order_rows)} rows")
+    print(f"Purchase orders : inserted {len(purchase_order_rows)} rows")

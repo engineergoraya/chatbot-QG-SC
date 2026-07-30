@@ -1,15 +1,11 @@
 """Load the Main Items table"""
 
-from database.scripts.etl_common import (
-    read_sheet, clean_text, bulk_insert
+from backend.database.scripts.etl_common import (
+    read_sheet, clean_text, bulk_insert,
+    data_files,
 )
 import pandas as pd
-from pathlib import Path
-directory = Path(__file__).resolve().parents[3] / "data" / "items_database"
-
-files = list(directory.iterdir())
-
-EXCEL_FILES = files
+EXCEL_FILES = data_files("items_database")
 
 #Order of columns matters here (must be same as order of ROWS list)
 ITEM_COLUMNS = ["item_code", "item", "specs", "uom", "item_category"]

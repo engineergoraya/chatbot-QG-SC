@@ -1,10 +1,10 @@
 """Load the Main Purchases table - resilient (see etl_common.resilient_load)."""
 
-from pathlib import Path
 
-from database.scripts.etl_common import (
+from backend.database.scripts.etl_common import (
     clean_text, clean_int, clean_date, clean_number,
     read_first_sheet, pick, resilient_load,
+    data_files,
 )
 
 PURCHASES_COLUMNS = [
@@ -30,9 +30,8 @@ _PO_NUMBER_IDX = PURCHASES_COLUMNS.index("po_number")
 
 
 def load_purchases(conn):
-    directory = Path(__file__).resolve().parents[3] / "data" / "purchases"
-    files = sorted(p for p in directory.iterdir() if p.suffix.lower() in (".xls", ".xlsx"))
-    print(f"Reading purchases files from {directory} ...")
+    files = data_files("purchases")
+    print(f"Reading purchases files from {files[0].parent} ...")
 
     rows = []
     for f in files:
@@ -63,6 +62,6 @@ def load_purchases(conn):
 
 
 if __name__ == "__main__":
-    from database.connection.database_connection import connection
+    from backend.database.connection.database_connection import connection
 
     load_purchases(connection)

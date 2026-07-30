@@ -14,8 +14,8 @@ same interface the loaders already expect.
 
 import psycopg2
 
-from app.config import write_dsn
+from app import config
 
-connection = psycopg2.connect(**write_dsn())
+connection = psycopg2.connect(**config.write_dsn())
 cursor = connection.cursor()
 print("Database connected successfully (owner-capable role, for ETL/schema scripts)")

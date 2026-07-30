@@ -15,7 +15,7 @@ Run AFTER load_06_import_masters.py and load_07_import_details.py.
 Usage:  python -m database.scripts.load_08_import_items
 """
 
-from database.scripts.etl_stores_imports import (
+from backend.database.scripts.etl_stores_imports import (
     read_import_rows, import_ref_for, ensure_items, load_import_map,
     bulk_insert, clean_text, clean_number, clean_date,
 )

@@ -16,18 +16,12 @@ Run AFTER load_01_exports.py.
 Usage:  python load_03_shipments.py
 """
 
-from database.scripts.etl_common import (
+from backend.database.scripts.etl_common import (
     read_sheet, make_export_key, clean_text, clean_date, clean_number,
     clean_int, load_export_map, bulk_insert,
+    data_file,
 )
-from pathlib import Path
-
-current_dir = Path(__file__).resolve().parent
-directory = Path(current_dir.parents[2] / "data" / "logistics")
-
-files = list(directory.iterdir())
-
-EXCEL_FILE = files[0]
+EXCEL_FILE = data_file("logistics")
 
 # Container column -> (size, type)
 CONTAINER_MAP = {

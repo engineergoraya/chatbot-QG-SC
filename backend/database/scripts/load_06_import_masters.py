@@ -17,7 +17,7 @@ All three upserts are idempotent (ON CONFLICT DO NOTHING), so re-running is safe
 Usage:  python -m database.scripts.load_06_import_masters
 """
 
-from database.scripts.etl_stores_imports import (
+from backend.database.scripts.etl_stores_imports import (
     IMPORT_FILE, IMPORT_HEADER_ROW, read_report,
     ensure_items, ensure_purchase_orders,
     clean_text,

@@ -16,7 +16,7 @@ INSERT — TRUNCATE shipment_details CASCADE before reloading.
 Usage:  python -m database.scripts.load_09_shipment_details
 """
 
-from database.scripts.etl_stores_imports import (
+from backend.database.scripts.etl_stores_imports import (
     read_import_rows, import_ref_for, load_import_map, bulk_insert,
     clean_text, clean_number, clean_int, clean_date,
 )

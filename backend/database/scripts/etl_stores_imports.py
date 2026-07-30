@@ -8,13 +8,15 @@ and adds the pieces this domain needs:
 
   * read_report()            — open a standalone .xls / .xlsx report
   * ensure_items()           — upsert the shared `items` master
-  * ensure_suppliers()       — upsert `suppliers`, return {name: supplier_id}
   * ensure_purchase_orders() — upsert `purchase_order`
   * load_import_map()        — {import_ref: import_id}  (FK resolution)
   * load_shipment_map()      — {(import_id, batch_no): shipment_id}
 
-Source files live in the ProjectFiles folder. The paths below are relative to
-the deployment root — adjust them (or make them absolute) for your machine.
+There is no `suppliers` master: the supplier name/country/city ride along as
+plain TEXT columns on import_details (see schemas/imports_schemas.py).
+
+Source workbooks are located by etl_common.data_file(), which searches this
+project's own data/ folder — no machine-specific paths to adjust.
 
 Requires:  pip install pandas openpyxl xlrd psycopg2-binary
            (xlrd is needed for the old binary .xls report exports)
@@ -27,42 +29,18 @@ import urllib.request
 import openpyxl
 import pandas as pd
 from psycopg2.extras import execute_values
-from pathlib import Path
 
 
 
 # Reuse the exact same cleaners the logistics loaders use.
-from database.scripts.etl_common import (
-    clean_text, clean_number, clean_int, clean_date, bulk_insert,
+from backend.database.scripts.etl_common import (
+    clean_text, clean_number, clean_int, clean_date, bulk_insert, data_file,
 )
 
-from pathlib import Path
-
-folders = ["imports", "stocks", "issuances", "store_requisitions"]
-file_names = {}
-for folder in folders:
-    current_dir = Path(__file__).resolve().parent
-    directory = current_dir.parents[1] / "data" / folder
-    files = list(directory.iterdir())
-
-    if folder == "imports":
-        file_names["imports"] = files[0]
-        print(files[0])
-    
-    if folder == "stocks":
-        file_names["stocks"] = files[0]
-    
-    if folder == "issuances":
-        file_names["issuances"] = files[0]
-    
-    if folder == "store_requisitions":
-        file_names["store_requisitions"] = files[0]
-
-
-IMPORT_FILE    = file_names["imports"]
-STOCK_FILE     = file_names["stocks"]
-ISSUANCE_FILE  = file_names["issuances"]
-STORE_REQ_FILE = file_names["store_requisitions"]
+IMPORT_FILE    = data_file("imports")
+STOCK_FILE     = data_file("stocks")
+ISSUANCE_FILE  = data_file("issuances")
+STORE_REQ_FILE = data_file("store_requisitions")
 
 # The Import Status Sheet carries two banner rows above the real header.
 IMPORT_HEADER_ROW = 2
@@ -275,7 +253,7 @@ def get_pkr_rates(isos) -> dict:
 __all__ = [
     "IMPORT_FILE", "STOCK_FILE", "ISSUANCE_FILE", "STORE_REQ_FILE",
     "IMPORT_HEADER_ROW", "read_report", "read_import_rows", "import_ref_for",
-    "ensure_items", "ensure_suppliers", "ensure_purchase_orders",
+    "ensure_items", "ensure_purchase_orders",
     "load_import_map", "load_shipment_map", "load_shipment_by_import",
     "resolve_import_currencies", "get_pkr_rates",
     "clean_text", "clean_number", "clean_int", "clean_date", "bulk_insert",
