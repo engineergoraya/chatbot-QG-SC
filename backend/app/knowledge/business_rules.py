@@ -168,7 +168,24 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
        JOIN ab_items ab ON ab.item_code = s.item_code AND ab.branch_name = s.branch
        LEFT JOIN usage u ON u.item_code = s.item_code AND u.branch = s.branch
        WHERE s.available_qty < COALESCE(u.daily_usage, 0) * (ab.lead_time_days + ab.safety_days)
-     (drop COUNT(*) for a listing of the actual items instead of a count).
+     For a LISTING of the actual items instead of a count, drop COUNT(*)
+     and select the item detail (per rule 5's item-name/uom mandate,
+     which applies here too — available_qty and reorder_level are both
+     physical quantities, so items.uom MUST ride along with them, not
+     just items.item):
+       SELECT s.item_code, i.item AS item_name, i.uom,
+              s.available_qty, ab.lead_time_days, ab.safety_days,
+              COALESCE(u.daily_usage, 0) AS daily_usage,
+              COALESCE(u.daily_usage, 0) * (ab.lead_time_days + ab.safety_days) AS reorder_level
+       FROM stock s
+       JOIN ab_items ab ON ab.item_code = s.item_code AND ab.branch_name = s.branch
+       LEFT JOIN usage u ON u.item_code = s.item_code AND u.branch = s.branch
+       LEFT JOIN items i ON i.item_code = s.item_code
+       WHERE s.available_qty < COALESCE(u.daily_usage, 0) * (ab.lead_time_days + ab.safety_days)
+     This item_name + uom pairing is the same for every OTHER item-level
+     listing in this rule (safety stock, projected reorder date, "which
+     items are critical") — never drop the uom column just because the
+     worked example you're adapting didn't happen to show one.
    - OUTPUT: one row per branch. If the item has one branch, or every branch
      yields the same value, a single figure is fine (say it applies to all
      branches). If branches differ (they usually do), show EACH branch's
@@ -237,11 +254,51 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      "resin a85 and 1085"), treat them as an OR across rows (each grade may
      be a DIFFERENT item_code), not an AND on one row — return all matching
      rows rather than assuming a single item.
-   - When displaying a quantity, also join items and include `items.uom` if it
-     helps the reader understand the number (e.g. "150 KG" vs. a bare "150").
-     Whenever the user asks about STOCK specifically, this is not optional:
-     JOIN items and concatenate the uom onto every quantity you report
-     (e.g. "150 KG", "40 Nos.").
+   - ITEM NAME + UOM ARE NOT OPTIONAL on any item-level result. `stock`,
+     `issuance`, `purchases_data`, `store_requisition`, `ab_items`, and
+     `import_item` each store ONLY `item_code` — none of them has its own
+     item-name or uom column. Whenever a query's result has one row per
+     item (or per item+branch/item+import/etc.) and item_code is part of
+     what's being shown or is the filter/grouping key, you MUST LEFT JOIN
+     `items` ON item_code and SELECT `items.item AS item_name` alongside
+     it — never surface a bare item_code with no readable name next to it.
+     Whenever that same row also shows a physical quantity (qty, quantity,
+     available_qty, stock_qty, req_quantity, hold_qty, etc.), also SELECT
+     `items.uom` and either show it as its own column or concatenate it
+     onto the quantity (e.g. "150 KG", "40 Nos.") — a bare number with no
+     unit is a wrong/unusable answer for a physical quantity. Use LEFT
+     JOIN, not INNER JOIN (rule 22): a handful of item_code values have no
+     matching items row, and an inner join would silently drop those.
+   - IMPORT / SHIPMENT LISTINGS (import_details, shipment_details): these
+     are header-level (one row per import/batch), but CONFIRMED in live
+     data every import_id currently has exactly ONE import_item row, so
+     the item being imported is directly relevant and SHOULD be shown too
+     whenever the listing already includes identifying columns (rule
+     17b's "how many/which" pattern) — LEFT JOIN import_item ON
+     import_id, then LEFT JOIN items ON item_code, and include
+     `items.item AS item_name` (and `import_item.uom` for its quantity).
+     Because the schema technically allows more than one item per import
+     even though none exist today, guard against ever duplicating the
+     header row: if more than one import_item could match, aggregate the
+     names with `string_agg(items.item, ', ')` (a flat TEXT column, not
+     the nested JSON/array rule 24 forbids) grouped by the header's own
+     key, rather than a plain join that could fan out.
+     Worked example — "how many imports are ongoing and their ETA at
+     works" (this EXACT shape of question — apply this pattern, do not
+     drop the item join for it):
+       SELECT id.import_id, i.item AS item_name, ii.qty, ii.uom,
+              id.current_status, sd.eta_works,
+              COUNT(*) OVER () AS total_matching_rows
+       FROM import_details id
+       JOIN shipment_details sd ON sd.import_id = id.import_id
+       LEFT JOIN import_item ii ON ii.import_id = id.import_id
+       LEFT JOIN items i ON i.item_code = ii.item_code
+       WHERE id.current_status NOT IN ('Arrived at Works', 'Order Cancelled')
+       ORDER BY sd.eta_works
+     This does NOT apply to a genuinely multi-item grouping like
+     export/shipment headers with no natural single-item relationship —
+     only add item_code/item_name there if the user explicitly asked
+     about a specific item within those shipments.
 
 6. BRANCH NAMES DIFFER ACROSS DOMAINS.
    - purchases_data.branch uses short codes: 'QE', 'QEN', 'QCL', 'QB2', 'IOL',
@@ -598,15 +655,24 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      Report the count from `total_matching_rows` (NOT from how many rows
      you can see — the result is capped, so counting the visible rows
      would understate the real total and is a WRONG ANSWER).
-     Worked example — "how many items are on water?":
-       SELECT id.file_no, id.supplier, id.supplier_country,
-              id.total_value_pkr, id.eta_works,
+     Worked example — "how many items are on water?" (import_details has
+     exactly one import_item row per import in the live data — see rule
+     5's item-name/uom paragraph — so ALWAYS bring the item name in on
+     an import/shipment listing like this one, not just the header
+     columns):
+       SELECT id.import_id, i.item AS item_name, ii.qty, ii.uom,
+              id.supplier, id.total_value_pkr, sd.eta_works,
               COUNT(*) OVER () AS total_matching_rows
        FROM import_details id
+       JOIN shipment_details sd ON sd.import_id = id.import_id
+       LEFT JOIN import_item ii ON ii.import_id = id.import_id
+       LEFT JOIN items i ON i.item_code = ii.item_code
        WHERE id.current_status = 'In Transit'
      Pick columns a supply-chain reader would actually want (an
-     identifier, the counterparty, a value, a date) — not every column,
-     and never `SELECT *`.
+     identifier, the item, the counterparty, a value, a date) — not
+     every column, and never `SELECT *`. This item_name/uom join applies
+     to every import/shipment listing of this "how many/which" shape,
+     not just this one example question.
    - This does NOT apply to a pure SCALAR MEASURE — a money/quantity
      total or average ("what is our inventory value?", "total purchase
      value", "average transit time", "average delay"). Those stay
