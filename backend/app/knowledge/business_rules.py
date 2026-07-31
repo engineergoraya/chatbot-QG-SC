@@ -302,6 +302,26 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      "resin a85 and 1085"), treat them as an OR across rows (each grade may
      be a DIFFERENT item_code), not an AND on one row — return all matching
      rows rather than assuming a single item.
+   - "SHAFT(S)" — CONFIRMED in live data: a plain `items.item ILIKE '%shaft%'`
+     MISSES an entire confirmed shaft product family whose item_category
+     carries the word but whose item NAME does not:
+     'Forged Drill Bar Hollow', 'Forged Drill Bar Stepped Hollow',
+     'Forged Round Bar', 'Forged Round Bar Stepped' — all 89 item_code rows
+     under `item_category = 'Shaft Material(Temp)'`. A "shaft(s)" question
+     must match EITHER that category OR the literal name, not the name
+     alone:
+       WHERE i.item_category = 'Shaft Material(Temp)' OR i.item ILIKE '%shaft%'
+     The `ILIKE '%shaft%'` side is still needed alongside it — it is what
+     catches the OTHER confirmed shaft items that live outside that
+     category and DO carry the word in their name: 'Crank Shaft',
+     'Shaft (Forged)', 'Shaft Lock', 'Shaft for Grinder',
+     'Shaft for Hydraulic Jack', 'Shaft Assembly For Pin Grinder',
+     'Gear Box Shaft', 'Gear Shaft', 'Pin Grinder Shaft' — spread across
+     Raw Materials & Alloys, Machine Accessories Mechanical, Power/Hand
+     Tools, and Workshop & General Items. Using only one side of the OR
+     silently drops real rows the user means by "shaft(s)" — the category
+     alone misses those, and the name-ILIKE alone misses the Forged
+     Drill/Round Bar family.
    - CRITICAL: the each-word-must-match AND applies ONLY to words that are
      actually part of the item name/grade itself. NEVER fold in generic
      surrounding words from the question that describe the ASK, not the
