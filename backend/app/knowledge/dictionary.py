@@ -62,11 +62,27 @@ _QUANT_TRIGGERS = [
 _ITEM_CODE_RE = re.compile(r"\b\d{3,7}-\d{1,4}\b")
 
 
+def _looks_like_abbreviation(word: str) -> bool:
+    """A short, fully-uppercase token (GIN, RFD, LC, ALC, ETA, MOP, UOM) is
+    almost always a business abbreviation, not a proper noun — real
+    supplier/branch names that are all-caps in this data tend to be actual
+    words ('TRADERS', 'ENTERPRISES') or multi-word, not a bare 2-5 letter
+    acronym. Strip trailing punctuation first so "GIN?" still counts."""
+    bare = word.strip("?.,!:;'\"")
+    return 2 <= len(bare) <= 5 and bare.isupper()
+
+
 def _has_mid_sentence_capital(question: str) -> bool:
-    """True if any word other than the first is capitalized — a likely
-    proper noun (supplier/branch/customer/file name)."""
+    """True if any word other than the first is capitalized in a way that
+    suggests a proper noun (supplier/branch/customer/file name) — NOT a
+    short all-caps abbreviation, which is exempted (see
+    _looks_like_abbreviation) so "What is GIN?" / "What is RFD?" still
+    resolve as genuine glossary lookups instead of being treated as if
+    they named a specific entity."""
     words = question.strip().split()
-    return any(w[:1].isupper() for w in words[1:])
+    return any(
+        w[:1].isupper() and not _looks_like_abbreviation(w) for w in words[1:]
+    )
 
 # Corrections for entries whose ORIGINAL meaning assumed schema/columns that
 # do not exist in the live database. Keyed by the same term text used in
@@ -96,6 +112,22 @@ _MEANING_OVERRIDES = {
         "the current usage rate). The live database has no dedicated "
         "stock_health column; it must be computed from stock.available_qty "
         "and recent issuance volume for the item/branch in question."
+    ),
+    "lc": (
+        "Letter of Credit — a bank instrument guaranteeing payment to a "
+        "foreign supplier. Tracked in payment_history (value_lc, "
+        "lc_payment_status = 'Paid'/'Unpaid'), not on import_details — "
+        "there is no lc_status column on the import shipment itself. "
+        "'Retirement' is the final settlement of the LC (payment_history.retire_date)."
+    ),
+    "alc / elc": (
+        "This abbreviation covers TWO distinct things in the live data, on "
+        "different columns of import_item — do not conflate them. (1) "
+        "Landed cost per unit: elc_amount_per_unit = ESTIMATED landed cost, "
+        "alc_amount_per_unit = ACTUAL landed cost (duty + clearance "
+        "included). (2) A separate LC-amendment tracking pair, "
+        "alc_status/alc_date, for whether an Amended/Established Letter of "
+        "Credit has been processed for that import line."
     ),
 }
 
@@ -171,16 +203,38 @@ def is_definition_question(question: str) -> bool:
     return True
 
 
+def _match_keys(term: str) -> list[str]:
+    """Alternate phrasings a term should also match on.
+
+    A compound term like 'ALC / ELC' or 'Demurrage / Detention' never
+    literally appears in a real question — nobody types "what is alc / elc"
+    — they ask about just one side ("what is ALC?"). Split on '/' and
+    register each side as its own key, alongside the full term, so either
+    phrasing resolves to the same entry.
+    """
+    sides = [p.strip() for p in term.split("/")]
+    return [term] + [s for s in sides if s and s != term]
+
+
 def lookup(question: str) -> DictionaryEntry | None:
     """Find the best-matching glossary entry for a definition-style
-    question. Matches on the longest dictionary term that appears in the
+    question. Matches on the longest key (the full term, or one side of a
+    compound "X / Y" term) that appears as a whole word/phrase in the
     question text."""
     q = _normalize(question)
+    candidates: list[tuple[int, DictionaryEntry]] = []
     for entry in _get_entries():
-        term_key = _normalize(entry.term)
-        if term_key and term_key in q:
-            return entry
-    return None
+        for key in _match_keys(entry.term):
+            key_norm = _normalize(key)
+            if key_norm and re.search(rf"(?<!\w){re.escape(key_norm)}(?!\w)", q):
+                candidates.append((len(key_norm), entry))
+                break  # this entry already matched; don't add it twice
+    if not candidates:
+        return None
+    # Longest matching key wins — e.g. "reorder level" over a shorter,
+    # coincidentally-contained alias.
+    candidates.sort(key=lambda pair: pair[0], reverse=True)
+    return candidates[0][1]
 
 
 def format_answer(entry: DictionaryEntry) -> str:
