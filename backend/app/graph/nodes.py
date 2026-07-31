@@ -256,8 +256,13 @@ def execute_sql(state: ChatState) -> ChatState:
             "truncated": False,
             "answer": (
                 "The query ran successfully but returned no matching rows. "
-                "The item, supplier, or branch you named may not exist in the "
-                "data, or the filters matched nothing."
+                "That does NOT necessarily mean the item/supplier/branch is "
+                "absent from the database — most often the filters were too "
+                "narrow, or the query required a table that only covers part "
+                "of the catalogue (e.g. `stock` has no row for about two "
+                "thirds of the items that have issuance history). Try naming "
+                "the item slightly differently, or ask about its usage/"
+                "purchase history instead."
             ),
             "confidence": confidence.EMPTY_RESULT,
             "done_reason": "empty",

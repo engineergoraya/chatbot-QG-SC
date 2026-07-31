@@ -43,21 +43,38 @@ _FUNCTIONS: list[SqlFunction] = [
         arg_count=1,
         args="search_item text",
         returns="current stock for the matched item(s)",
-        when_to_use="For 'current stock of X' / 'how much X do we have' questions.",
+        when_to_use=(
+            "For a simple 'current stock of X' where X is a plain item NAME "
+            "word. Do NOT use it when X includes a grade/code token (e.g. "
+            "'a85', '1085') — it matches items.item only, never items.specs, "
+            "so a grade search returns zero rows; write normal SQL instead."
+        ),
     ),
     SqlFunction(
         name="supplier_delay",
         arg_count=1,
         args="search_item text",
         returns="late suppliers and their delay in days, for the matched item",
-        when_to_use="For supplier lateness/delay questions about a specific item.",
+        when_to_use=(
+            "For supplier lateness/delay questions about a specific item named "
+            "by a plain NAME word. Same items.item-only limitation as above — "
+            "use normal SQL for a grade/code token."
+        ),
     ),
     SqlFunction(
         name="reorder_recommendation",
         arg_count=1,
         args="search_item text",
         returns="reorder timing and recommendation for the matched item",
-        when_to_use="For 'when should we reorder / buy X' questions.",
+        when_to_use=(
+            "For 'when should we reorder / buy X' ONLY when X is a plain item "
+            "NAME word AND the item is known to be stock-carried. It inner-"
+            "joins stock and matches items.item only, so it silently omits "
+            "grade/spec matches and every item with no stock row (about two "
+            "thirds of issued items) — when in doubt prefer rule 4's "
+            "item-anchored LEFT JOIN query, which reports those cases instead "
+            "of dropping them."
+        ),
     ),
 ]
 

@@ -212,37 +212,83 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      legitimate future reorder date, which is a wrong empty answer, not a
      correct one. The only WHERE filter here is the item (and branch, if
      named) the user asked about.
+     CRITICAL — NEVER DRIVE THIS QUERY OFF `stock` (`FROM stock s JOIN
+     ab_items ...`). `stock` is a PARTIAL snapshot, not a list of every
+     item: CONFIRMED in live data, 8,274 of the 11,956 items that have
+     issuance history (69%) have NO stock row at all. Driving FROM stock
+     (or INNER JOINing it, or INNER JOINing ab_items) silently deletes
+     roughly two-thirds of the real, actively-consumed catalogue and
+     returns ZERO ROWS for them — which then gets reported as "the item
+     may not exist", a WRONG answer about an item with hundreds of
+     issuance lines. This is the single most common cause of a bogus
+     empty result on this rule. CONFIRMED example: item 26287-60
+     'Resin' / specs 'A-85 / 103 / 1085' is rank 'A', has ab_items rows
+     at BOTH branches, and is consumed at ~1,391 kg/day at Qadcast — but
+     has NO stock row, so a stock-driven query returns nothing for it and
+     instead answers about the minor 'Resin Sand' item, which is wrong.
+     ALWAYS anchor on the matched ITEMS (which always exist) and LEFT
+     JOIN stock / ab_items / usage onto them — this is rule 21's
+     graceful-degradation requirement applied to this rule.
      Worked example — "when should we buy resin based on the current usage
      pattern?" (name ONLY the item as a filter — "usage"/"pattern"/"based
-     on"/"current" are question phrasing, not item-name tokens, per rule 5):
-       WITH usage AS (
+     on"/"current" are question phrasing, not item-name tokens, per rule 5.
+     For a base word PLUS grade/code tokens, see the grade-matching variant
+     immediately after this example):
+       WITH matched_items AS (
+         SELECT item_code, item, specs, uom FROM items
+         WHERE item ILIKE '%resin%'
+       ),
+       spine AS (   -- every item+branch that has EITHER stock OR issuance
+         SELECT item_code, branch FROM stock
+         WHERE item_code IN (SELECT item_code FROM matched_items)
+         UNION
+         SELECT item_code, branch FROM issuance
+         WHERE item_code IN (SELECT item_code FROM matched_items)
+       ),
+       usage AS (
          SELECT item_code, branch,
                 SUM(quantity) / NULLIF(MAX(from_date) - MIN(from_date) + 1, 0) AS daily_usage
          FROM issuance
-         WHERE item_code IN (SELECT item_code FROM items WHERE item ILIKE '%resin%')
+         WHERE item_code IN (SELECT item_code FROM matched_items)
          GROUP BY item_code, branch
        )
-       SELECT s.branch, s.item_code, i.item AS item_name, i.uom,
-              s.available_qty, COALESCE(u.daily_usage, 0) AS daily_usage,
+       SELECT mi.item_code, mi.item AS item_name, mi.specs, mi.uom, sp.branch,
+              s.available_qty, u.daily_usage,
               s.available_qty / NULLIF(u.daily_usage, 0) AS days_of_stock_left,
-              (COALESCE(u.daily_usage, 0) * (ab.lead_time_days + ab.safety_days)) AS reorder_level,
-              (s.available_qty - COALESCE(u.daily_usage, 0) * (ab.lead_time_days + ab.safety_days))
+              (u.daily_usage * (ab.lead_time_days + ab.safety_days)) AS reorder_level,
+              (s.available_qty - u.daily_usage * (ab.lead_time_days + ab.safety_days))
                 / NULLIF(u.daily_usage, 0) AS days_until_reorder,
               CURRENT_DATE + (INTERVAL '1 day' *
-                ((s.available_qty - COALESCE(u.daily_usage, 0) * (ab.lead_time_days + ab.safety_days))
+                ((s.available_qty - u.daily_usage * (ab.lead_time_days + ab.safety_days))
                   / NULLIF(u.daily_usage, 0))) AS projected_reorder_date
-       FROM stock s
-       JOIN ab_items ab ON ab.item_code = s.item_code AND ab.branch_name = s.branch
-       JOIN items i ON i.item_code = s.item_code
-       LEFT JOIN usage u ON u.item_code = s.item_code AND u.branch = s.branch
-       WHERE i.item ILIKE '%resin%'
-     (subquery GROUP BY must select every column the outer query joins on —
-     both item_code AND branch here — a subquery that groups by branch but
-     forgets to SELECT it will error with "column u.branch does not exist"
-     the moment the outer query references it.) days_until_reorder may be
-     negative — that means the item is ALREADY below its reorder point
-     today; say so plainly rather than reporting a past date as if it were
-     a future recommendation.
+       FROM matched_items mi
+       LEFT JOIN spine sp ON sp.item_code = mi.item_code
+       LEFT JOIN stock s ON s.item_code = mi.item_code AND s.branch = sp.branch
+       LEFT JOIN usage u ON u.item_code = mi.item_code AND u.branch = sp.branch
+       LEFT JOIN ab_items ab ON ab.item_code = mi.item_code AND ab.branch_name = sp.branch
+       ORDER BY mi.item_code, sp.branch
+     Do NOT wrap daily_usage in COALESCE(...,0) here — a real NULL (no
+     issuance history for that item+branch) must stay NULL so it reads as
+     "unknown", not as a genuine zero usage rate; COALESCE(...,0) also
+     makes reorder_level a fake 0 and days_of_stock_left a division by
+     zero. (Each subquery's GROUP BY must select every column the outer
+     query joins on — both item_code AND branch here — a subquery that
+     groups by branch but forgets to SELECT it will error with "column
+     u.branch does not exist" the moment the outer query references it.)
+     READING THE RESULT — the columns say WHICH piece is missing, and the
+     answer must say so rather than reporting a misleading number:
+       * available_qty NULL  -> that item has NO stock row at all. Do NOT
+         call this "out of stock" (rule 17's distinction) and do NOT say
+         the item doesn't exist. Say the item is not carried in the
+         current stock snapshot, so a reorder date cannot be projected,
+         and give its daily usage instead — that is a real, useful answer.
+       * daily_usage NULL    -> no issuance history for that branch;
+         coverage is unknown, not zero.
+       * lead_time_days/safety_days NULL -> outside ab_items' two-branch
+         coverage; reorder_level cannot be computed (see above).
+     days_until_reorder may be negative — that means the item is ALREADY
+     below its reorder point today; say so plainly rather than reporting
+     a past date as if it were a future recommendation.
      ANSWER FORMATTING — when days_until_reorder is negative for a row, do
      NOT present projected_reorder_date as a bare "projected reorder date of
      <past date>" bullet sitting next to days_of_stock_left as if the two
@@ -259,56 +305,44 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      rather than guessing. Per rule 13, always add one line that this is a
      projection from current stock and historical average usage, not a
      demand forecast (no seasonality/trend modeling).
-     Worked example — "when should we buy resin a85?" (base item word PLUS
-     a grade/code-like token in the SAME question — THE FAILURE MODE TO
-     AVOID: do not concatenate the words into one literal phrase like
-     `i.item ILIKE '%resin a85%'` — "resin a85" never appears contiguously
-     in any single column. CONFIRMED in live data: item_code 16425-60 has
-     item='Resin' and specs='A-85' in SEPARATE columns, so that phrase can
-     never match even before the hyphen problem. Resolve the item_code(s)
-     FIRST, in their own CTE, combining rule 5's combined-column blob, the
-     each-word-matches-somewhere rule, AND grade punctuation-stripping —
-     each technique alone is not enough here, both are needed together):
+     GRADE-MATCHING VARIANT — "when should we buy resin a85?" / "resin a85
+     1085" (a base item word PLUS one or more grade/code-like tokens).
+     Keep the ENTIRE query shape above (matched_items -> spine -> usage,
+     all LEFT JOINs); ONLY the matched_items CTE changes. THE FAILURE MODE
+     TO AVOID: do not concatenate the words into one literal phrase like
+     `i.item ILIKE '%resin a85%'` — CONFIRMED in live data, item 16425-60
+     stores item='Resin' and specs='A-85' in SEPARATE columns, so that
+     phrase appears in no single column and matches ZERO rows even before
+     the hyphen problem. Build matched_items with rule 5's combined-column
+     blob AND punctuation-stripping, with the base word AND'd but the
+     GRADES OR'd together (each grade is usually a DIFFERENT item_code —
+     ANDing them would demand one row carry every grade at once):
        WITH matched_items AS (
-         SELECT item_code FROM items i
+         SELECT item_code, item, specs, uom FROM items i
          WHERE regexp_replace(lower(coalesce(i.item,'')||' '||coalesce(i.specs,'')||' '||
                coalesce(i.group_name,'')||' '||coalesce(i.material_standard,'')||' '||
                coalesce(i.item_category,'')), '[^a-z0-9]', '', 'g') ILIKE '%resin%'
-           AND regexp_replace(lower(coalesce(i.item,'')||' '||coalesce(i.specs,'')||' '||
+           AND (
+             regexp_replace(lower(coalesce(i.item,'')||' '||coalesce(i.specs,'')||' '||
                coalesce(i.group_name,'')||' '||coalesce(i.material_standard,'')||' '||
                coalesce(i.item_category,'')), '[^a-z0-9]', '', 'g') ILIKE '%a85%'
-       ),
-       usage AS (
-         SELECT item_code, branch,
-                SUM(quantity) / NULLIF(MAX(from_date) - MIN(from_date) + 1, 0) AS daily_usage
-         FROM issuance
-         WHERE item_code IN (SELECT item_code FROM matched_items)
-         GROUP BY item_code, branch
-       )
-       SELECT s.branch, s.item_code, i.item AS item_name, i.specs, i.uom,
-              s.available_qty, COALESCE(u.daily_usage, 0) AS daily_usage,
-              s.available_qty / NULLIF(u.daily_usage, 0) AS days_of_stock_left,
-              (COALESCE(u.daily_usage, 0) * (ab.lead_time_days + ab.safety_days)) AS reorder_level,
-              (s.available_qty - COALESCE(u.daily_usage, 0) * (ab.lead_time_days + ab.safety_days))
-                / NULLIF(u.daily_usage, 0) AS days_until_reorder,
-              CURRENT_DATE + (INTERVAL '1 day' *
-                ((s.available_qty - COALESCE(u.daily_usage, 0) * (ab.lead_time_days + ab.safety_days))
-                  / NULLIF(u.daily_usage, 0))) AS projected_reorder_date
-       FROM stock s
-       JOIN matched_items mi ON mi.item_code = s.item_code
-       JOIN ab_items ab ON ab.item_code = s.item_code AND ab.branch_name = s.branch
-       JOIN items i ON i.item_code = s.item_code
-       LEFT JOIN usage u ON u.item_code = s.item_code AND u.branch = s.branch
-     This correctly returns EVERY qualifying item_code (16425-60 'Resin/
-     A-85' AND 26287-60 'Resin/A-85 / 103 / 1085' both qualify — an
-     OR-across-rows result per rule 5, not a single assumed item), with
-     i.specs included in the SELECT so the answer can tell the matched
-     grades apart. This merge (resolve item_code(s) in their own CTE using
-     the full grade-matching technique, THEN join everything else to that
-     CTE) applies any time a projection/reorder/safety-stock question in
-     THIS rule names a grade-like token alongside the base item word —
-     never fall back to a plain single-word `item ILIKE` filter just
-     because this worked example is more complex than the one above it.
+             OR regexp_replace(lower(coalesce(i.item,'')||' '||coalesce(i.specs,'')||' '||
+               coalesce(i.group_name,'')||' '||coalesce(i.material_standard,'')||' '||
+               coalesce(i.item_category,'')), '[^a-z0-9]', '', 'g') ILIKE '%1085%'
+           )
+       ), ...   -- spine / usage / LEFT JOINs exactly as above
+     VERIFIED against live data: for "resin a85 1085" this matches 16425-60
+     (Resin/A-85), 24612-60 (Resin/1085) and 26287-60 (Resin/A-85 / 103 /
+     1085) — all three, an OR-across-rows result per rule 5, not one
+     assumed item — and the LEFT-JOIN shape then returns a real row per
+     item+branch showing available_qty NULL (no stock row) plus each
+     branch's true daily usage, instead of the zero rows a stock-driven
+     INNER-JOIN query returns. Always SELECT `specs` alongside item_name
+     on a grade question so the answer can tell the matched grades apart.
+     Some matches may be retired items whose name contains '(Deleted)'
+     (e.g. 24284-60 'Resin (EFS) (Deleted)') — mention them separately or
+     exclude them with `AND item NOT ILIKE '%(deleted)%'`, rather than
+     presenting a deleted item as a live recommendation.
 
 5. JOIN KEY — item_code is the canonical key everywhere, and it is opaque.
    - Join stock / issuance / purchases_data to `items` on `item_code`.
