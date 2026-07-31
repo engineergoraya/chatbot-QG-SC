@@ -12,7 +12,13 @@ Checks, in order:
      ALTER/TRUNCATE/GRANT/REVOKE/CREATE/COPY/CALL/DO/MERGE, etc.), even in a
      position the parser might treat as harmless.
   4. No multiple-statement smuggling via comments or semicolons.
-  5. Every table the query references exists in the introspected schema.
+  5. Every table the query references exists in the introspected schema —
+     EXCEPT a `FROM/JOIN <fn>(...)` call to a function on the verified
+     registry (app/knowledge/functions.py), which is allowed instead when
+     the call's argument count matches that function's registered arity
+     exactly. Any other function name, or a registered name called with the
+     wrong number of arguments, is still rejected — see
+     `_collect_from_join_functions`.
   6. A row LIMIT is present; if absent, one is injected. If present but larger
      than MAX_ROWS, it is capped.
   7. Any `ORDER BY ... DESC` gets an explicit NULLS LAST.
@@ -21,7 +27,10 @@ The result carries the (possibly rewritten) safe SQL to run.
 
 This is layer two. Layer one is the read-only Postgres role (see
 scripts/setup_readonly_role.sql): even a guard bypass cannot write, because
-the DB connection itself lacks write permission.
+the DB connection itself lacks write permission. The verified functions are
+GRANTed to that same read-only role, are read-only themselves, and are only
+ever invoked as `SELECT ... FROM fn(...)` — never CALL/procedure syntax,
+which stays blocklisted like any other write-shaped keyword.
 """
 
 from __future__ import annotations
@@ -30,11 +39,12 @@ import re
 from dataclasses import dataclass
 
 import sqlparse
-from sqlparse.sql import Comment, Function, Parenthesis
-from sqlparse.tokens import Keyword, DML, DDL, Comment as CommentToken
+from sqlparse.sql import Comment, Function, Identifier, IdentifierList, Parenthesis
+from sqlparse.tokens import Keyword, DML, DDL, Punctuation, Comment as CommentToken
 
 from app import config
 from app.db.introspect import Schema
+from app.knowledge import functions as function_registry
 
 
 _BLOCKLIST = {
@@ -109,9 +119,78 @@ def _mask_function_args(token) -> str:
     return str(token)
 
 
-def _collect_table_refs(sql: str) -> set[str]:
+def _is_join_or_from_keyword(tok) -> bool:
+    if tok.ttype is not Keyword:
+        return False
+    value = tok.value.upper()
+    return value == "FROM" or value.endswith("JOIN")
+
+
+def _next_significant_token(tokens, start_idx: int):
+    for tok in tokens[start_idx + 1 :]:
+        if tok.is_whitespace or isinstance(tok, Comment) or tok.ttype in (CommentToken,):
+            continue
+        return tok
+    return None
+
+
+def _function_call_source(tok) -> Function | None:
+    """If `tok` is a FROM/JOIN source item that is a function call (bare or
+    aliased, e.g. `fn('x')` or `fn('x') AS t`), return the Function token."""
+    if isinstance(tok, Function):
+        return tok
+    if isinstance(tok, Identifier) and tok.tokens:
+        first = tok.tokens[0]
+        if isinstance(first, Function):
+            return first
+    return None
+
+
+def _function_arg_count(paren: Parenthesis) -> int:
+    inner = [t for t in paren.tokens if not t.is_whitespace]
+    inner = inner[1:-1] if len(inner) >= 2 else []  # drop the surrounding ( and )
+    if not inner:
+        return 0
+    for t in inner:
+        if isinstance(t, IdentifierList):
+            return len(list(t.get_identifiers()))
+    comma_count = sum(1 for t in inner if t.ttype is Punctuation and t.value == ",")
+    return comma_count + 1
+
+
+def _collect_from_join_functions(token, found: dict[str, list[int]]) -> None:
+    """Recursively walk the parsed statement (any nesting depth — subqueries,
+    CTEs) and record (name -> [arg_count, ...]) for every function called
+    directly as a FROM/JOIN source. A function used elsewhere (e.g. COUNT(*)
+    in the SELECT list, or inside a WHERE clause) is NOT collected here —
+    only a genuine table-position call is a candidate for the registry
+    bypass."""
+    if not (hasattr(token, "tokens") and token.tokens):
+        return
+    toks = token.tokens
+    for i, tok in enumerate(toks):
+        if _is_join_or_from_keyword(tok):
+            nxt = _next_significant_token(toks, i)
+            fn = _function_call_source(nxt) if nxt is not None else None
+            if fn is not None:
+                name = (fn.get_real_name() or "").lower()
+                paren = next(
+                    (c for c in fn.tokens if isinstance(c, Parenthesis)), None
+                )
+                arg_count = _function_arg_count(paren) if paren is not None else 0
+                found.setdefault(name, []).append(arg_count)
+        _collect_from_join_functions(tok, found)
+
+
+def _collect_table_refs(sql: str) -> tuple[set[str], dict[str, list[int]]]:
     parsed = sqlparse.parse(sql)
-    scan_text = _mask_function_args(parsed[0]) if parsed else sql
+    stmt = parsed[0] if parsed else None
+
+    function_calls: dict[str, list[int]] = {}
+    if stmt is not None:
+        _collect_from_join_functions(stmt, function_calls)
+
+    scan_text = _mask_function_args(stmt) if stmt else sql
 
     tables: set[str] = set()
     pattern = re.compile(
@@ -122,9 +201,28 @@ def _collect_table_refs(sql: str) -> set[str]:
         name = m.group(1)
         if "." in name:
             name = name.split(".")[-1]
-        if name.lower() not in _NOT_A_TABLE:
-            tables.add(name.lower())
-    return tables
+        lname = name.lower()
+        if lname in _NOT_A_TABLE or lname in function_calls:
+            continue
+        tables.add(lname)
+    return tables, function_calls
+
+
+def _validate_function_calls(function_calls: dict[str, list[int]]) -> str | None:
+    """Return an error reason if any FROM/JOIN function call is not on the
+    verified registry, or is called with the wrong number of arguments;
+    None if every call is approved."""
+    for name, arg_counts in function_calls.items():
+        fn = function_registry.get(name)
+        if fn is None:
+            return f"Query calls an unapproved function: {name}."
+        for count in arg_counts:
+            if count != fn.arg_count:
+                return (
+                    f"Function {name} must be called with exactly "
+                    f"{fn.arg_count} argument(s); got {count}."
+                )
+    return None
 
 
 def _apply_limit(sql: str, max_rows: int) -> str:
@@ -189,7 +287,13 @@ def validate(sql: str, schema: Schema, max_rows: int | None = None) -> GuardResu
         return GuardResult(ok=False, reason=f"Disallowed keyword: {bad}.")
 
     cte_names = _collect_cte_names(cleaned)
-    refs = _collect_table_refs(cleaned) - cte_names
+    refs, function_calls = _collect_table_refs(cleaned)
+    refs -= cte_names
+
+    fn_error = _validate_function_calls(function_calls)
+    if fn_error:
+        return GuardResult(ok=False, reason=fn_error)
+
     unknown = [t for t in refs if not schema.has_table(t)]
     if unknown:
         return GuardResult(
