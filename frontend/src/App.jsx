@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { sendMessage, checkHealth } from "./api";
+import SupplyChainBackground from "./SupplyChainBackground";
 import "./App.css";
 
 const EXAMPLE_QUESTIONS = [
@@ -158,11 +159,16 @@ export default function App() {
     health?.status === "ok" ? "ok" : health?.status === "degraded" ? "degraded" : "down";
 
   return (
-    <div className="app-shell">
+    <>
+      <SupplyChainBackground />
+      <div className="app-shell">
       <header className="app-header">
-        <div>
-          <h1>Qadri Group</h1>
-          <p>AI Supply Chain Assistant</p>
+        <div className="brand">
+          <span className="brand-mark">IRS</span>
+          <span className="brand-text">
+            <strong>Intelligence Reporting System</strong>
+            <em>Qadri Group · Supply Chain</em>
+          </span>
         </div>
         <div className="header-right">
           <button
@@ -183,7 +189,8 @@ export default function App() {
       <main className="chat-area">
         {messages.length === 0 && (
           <div className="welcome">
-            <p>Ask a question about stock, purchases, imports, logistics, or issuance.</p>
+            <h2 className="welcome-title">Ask IRS Anything</h2>
+            <p>Stock, purchases, imports, logistics or issuance — answered from live data.</p>
             <div className="chips">
               {EXAMPLE_QUESTIONS.map((q) => (
                 <button key={q} className="chip" onClick={() => handleSend(q)}>
@@ -226,6 +233,7 @@ export default function App() {
           Send
         </button>
       </footer>
-    </div>
+      </div>
+    </>
   );
 }
