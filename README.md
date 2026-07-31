@@ -47,6 +47,44 @@ read-only `SELECT`/CTE referencing real tables, and (2) even if that were
 bypassed, the chatbot's DB connection uses a Postgres role
 (`chatbot_ro`) that physically cannot INSERT/UPDATE/DELETE/DROP anything.
 
+## Verified SQL functions
+
+For a few question shapes, the model calls a verified read-only PostgreSQL
+function instead of writing equivalent SQL by hand:
+
+| Function | Argument | Returns | Use for |
+|---|---|---|---|
+| `current_stock_of(search_item text)` | item search term | current stock for the matched item(s) | "current stock of X" / "how much X do we have" |
+| `supplier_delay(search_item text)` | item search term | late suppliers and their delay in days | supplier lateness/delay questions about an item |
+| `reorder_recommendation(search_item text)` | item search term | reorder timing + recommendation | "when should we reorder / buy X" |
+
+These functions already exist in the `supplychain_automation` database and
+are already `GRANT`ed to the read-only `chatbot_ro` role — no setup is
+needed beyond the DB-side grant that's already in place. The chatbot calls
+them as `SELECT * FROM <function_name>('<search term>')`, which runs
+through the **exact same** guard and read-only executor as any other
+query — there is no separate code path and no relaxation of the
+SELECT-only rule.
+
+`backend/app/knowledge/functions.py` is the single source of truth: each
+entry lists the function's name, its fixed one-argument signature, what it
+returns, and a one-line routing description. Two other places read from it,
+and nothing else needs to change to add a new verified function here (plus
+the matching DB-side grant):
+
+- `backend/app/graph/guard.py` allows a `FROM <fn>(...)` reference to pass
+  the guard's table-existence check *only* when `<fn>` is on this registry
+  *and* the call's argument count matches exactly — an unknown function
+  name, or a registered function called with the wrong number of
+  arguments, is still rejected like any unknown table. Every other guard
+  rule (single statement, SELECT/WITH only, keyword blocklist, LIMIT,
+  NULLS LAST) applies unchanged. See `backend/tests/test_guard.py` for the
+  approved/unapproved/wrong-arity/normal-table cases.
+- `backend/app/knowledge/business_rules.py` renders the registry into the
+  system prompt as its own `FUNCTION_CATALOG` block (after `SQL_CONTRACT`,
+  before the live schema), telling the model when to call each function.
+  Raw text-to-SQL remains the fallback for every other question shape.
+
 The **business rules baked into the system prompt** (`backend/app/knowledge/business_rules.py`)
 are verified against the *live* database — not just the original planning
 docs — because the real schema diverged from the plan in places (e.g. there
@@ -78,13 +116,20 @@ backend/                FastAPI + LangGraph backend
     db/                  live schema introspection + read-only query executor
     graph/
       state.py, nodes.py, workflow.py   the LangGraph state machine
-      guard.py                           the SQL safety guard
+      guard.py                           the SQL safety guard (incl. the
+                                         verified-function allow-list)
       confidence.py                      the documented confidence scheme
     llm/                 OpenAI client wrapper (generate/repair/explain/
                           explain_forecast, retry-with-backoff on transient
                           errors)
     knowledge/
       business_rules.py   verified, live-schema business rules (system prompt)
+      functions.py          registry of verified read-only SQL functions
+                            (current_stock_of, supplier_delay,
+                            reorder_recommendation) — single source of
+                            truth for guard.py's allow-list and the
+                            prompt's function catalog; see "Verified SQL
+                            functions" above
       dictionary.py        fast-path glossary answers (no SQL, no DB hit)
       rag.py                TF-IDF retrieval over the original knowledge PDFs
       rag_documents/        the source PDFs/MD files for the RAG corpus
@@ -276,7 +321,8 @@ See `backend/.env.example` for the full, authoritative list. Summary:
 ```bash
 cd backend
 pytest                     # unit tests: OpenAI retry/backoff, session store,
-                            # analytics/series.py, analytics/forecasting.py
+                            # analytics/series.py, analytics/forecasting.py,
+                            # the SQL guard incl. verified-function allow-list
 python scripts/smoke_test.py   # the 7 required acceptance questions, against
                                 # the live DB + a real OpenAI key
 ```
