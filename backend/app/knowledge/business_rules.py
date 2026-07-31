@@ -194,18 +194,65 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      issuance history has a NULL daily_usage — say the figure is unknown for
      that branch rather than treating it as 0.
    - PROJECTED NEXT-ORDER DATE ("when should we reorder", "when will we run
-     out", "based on current stock and usage trend"): this is a CURRENT
-     snapshot projection, not a historical total — it does NOT need a time
-     period from the user (do not trigger rule 14 for it) and it does NOT
-     need item entity matching to be item-code-vs-branch AND'd together
-     the way rule 5 warns about for multi-grade items. Build it from the
-     SAME ingredients as reorder_level above, in one query:
-       days_of_stock_left  = available_qty / NULLIF(branch_daily_usage, 0)
-       days_until_reorder  = (available_qty - reorder_level) / NULLIF(branch_daily_usage, 0)
-       projected_reorder_date = CURRENT_DATE + days_until_reorder (days_until_reorder
-         may be negative — that means the item is ALREADY below its reorder
-         point today; say so plainly rather than reporting a past date as if
-         it were a future recommendation).
+     out", "when should we buy X", "based on current stock and usage
+     pattern/trend"): this is a CURRENT snapshot projection, not a
+     historical total — it does NOT need a time period from the user (do
+     not trigger rule 14 for it) and it does NOT need item entity matching
+     to be item-code-vs-branch AND'd together the way rule 5 warns about
+     for multi-grade items.
+     CRITICAL — DO NOT FILTER TO ROWS ALREADY BELOW REORDER LEVEL. This
+     question asks for the projection for the NAMED item, whatever its
+     current status — it is NOT the "which items are below reorder level"
+     listing query from earlier in this rule, and must NOT reuse that
+     query's `WHERE available_qty < reorder_level` filter. Copying that
+     WHERE clause onto a projection question silently drops every branch
+     whose stock hasn't yet crossed the threshold — e.g. it will return
+     ZERO ROWS for an item that is perfectly healthy today but still has a
+     legitimate future reorder date, which is a wrong empty answer, not a
+     correct one. The only WHERE filter here is the item (and branch, if
+     named) the user asked about.
+     Worked example — "when should we buy resin based on the current usage
+     pattern?" (name ONLY the item as a filter — "usage"/"pattern"/"based
+     on"/"current" are question phrasing, not item-name tokens, per rule 5):
+       WITH usage AS (
+         SELECT item_code, branch,
+                SUM(quantity) / NULLIF(MAX(from_date) - MIN(from_date) + 1, 0) AS daily_usage
+         FROM issuance
+         WHERE item_code IN (SELECT item_code FROM items WHERE item ILIKE '%resin%')
+         GROUP BY item_code, branch
+       )
+       SELECT s.branch, s.item_code, i.item AS item_name, i.uom,
+              s.available_qty, COALESCE(u.daily_usage, 0) AS daily_usage,
+              s.available_qty / NULLIF(u.daily_usage, 0) AS days_of_stock_left,
+              (COALESCE(u.daily_usage, 0) * (ab.lead_time_days + ab.safety_days)) AS reorder_level,
+              (s.available_qty - COALESCE(u.daily_usage, 0) * (ab.lead_time_days + ab.safety_days))
+                / NULLIF(u.daily_usage, 0) AS days_until_reorder,
+              CURRENT_DATE + (INTERVAL '1 day' *
+                ((s.available_qty - COALESCE(u.daily_usage, 0) * (ab.lead_time_days + ab.safety_days))
+                  / NULLIF(u.daily_usage, 0))) AS projected_reorder_date
+       FROM stock s
+       JOIN ab_items ab ON ab.item_code = s.item_code AND ab.branch_name = s.branch
+       JOIN items i ON i.item_code = s.item_code
+       LEFT JOIN usage u ON u.item_code = s.item_code AND u.branch = s.branch
+       WHERE i.item ILIKE '%resin%'
+     (subquery GROUP BY must select every column the outer query joins on —
+     both item_code AND branch here — a subquery that groups by branch but
+     forgets to SELECT it will error with "column u.branch does not exist"
+     the moment the outer query references it.) days_until_reorder may be
+     negative — that means the item is ALREADY below its reorder point
+     today; say so plainly rather than reporting a past date as if it were
+     a future recommendation.
+     ANSWER FORMATTING — when days_until_reorder is negative for a row, do
+     NOT present projected_reorder_date as a bare "projected reorder date of
+     <past date>" bullet sitting next to days_of_stock_left as if the two
+     were the same forward-looking timeline — that reads as a genuine future
+     recommendation even when a disclaimer sentence follows elsewhere. State
+     the pastness IN THE SAME CLAUSE instead, e.g. "already ABS(days_until_
+     reorder) days overdue for reorder (was due around <date>) — N days of
+     stock physically remain before a stockout". Never let days_of_stock_left
+     (time to physical stockout) and days_until_reorder/projected_reorder_
+     date (time past the reorder trigger point) blur into one figure — they
+     answer different questions and both may need to be shown per row.
      A branch/item outside ab_items' two-branch coverage, or with zero
      issuance history (NULL daily_usage), CANNOT be projected — say so
      rather than guessing. Per rule 13, always add one line that this is a
@@ -254,6 +301,17 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      "resin a85 and 1085"), treat them as an OR across rows (each grade may
      be a DIFFERENT item_code), not an AND on one row — return all matching
      rows rather than assuming a single item.
+   - CRITICAL: the each-word-must-match AND applies ONLY to words that are
+     actually part of the item name/grade itself. NEVER fold in generic
+     surrounding words from the question that describe the ASK, not the
+     item — "usage", "pattern", "trend", "current", "based on", "should",
+     "buy", "when", "stock" and the like are never item-name tokens and
+     must NOT be ILIKE-ANDed in. A question like "when should we buy resin
+     based on the current usage pattern?" names exactly ONE item keyword —
+     resin — and must filter ONLY on `%resin%`; adding `%pattern%` or
+     `%usage%` to the same AND chain will zero out real, confirmed rows
+     (this is a common failure mode — verify you are not doing it before
+     returning a "no rows" answer for a real item like resin/hardener).
    - ITEM NAME + UOM ARE NOT OPTIONAL on any item-level result. `stock`,
      `issuance`, `purchases_data`, `store_requisition`, `ab_items`, and
      `import_item` each store ONLY `item_code` — none of them has its own
@@ -269,6 +327,16 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      unit is a wrong/unusable answer for a physical quantity. Use LEFT
      JOIN, not INNER JOIN (rule 22): a handful of item_code values have no
      matching items row, and an inner join would silently drop those.
+     This is not optional polish — apply it by default to EVERY item-level
+     table/listing, whether or not the user's wording mentioned "name":
+     `items.item AS item_name` rides along automatically wherever item_code
+     appears in a result. And if the user explicitly asks for the item
+     name/what an item is called ("what item is this", "show item names",
+     "which items are these", "name of item X") the answer MUST surface
+     `items.item` in plain text — never answer with just an item_code, a
+     row count, or a generic description when a name was explicitly asked
+     for; that is always available via the item_code join and withholding
+     it is a wrong answer, not a limitation of the data.
    - IMPORT / SHIPMENT LISTINGS (import_details, shipment_details): these
      are header-level (one row per import/batch), but CONFIRMED in live
      data every import_id currently has exactly ONE import_item row, so
