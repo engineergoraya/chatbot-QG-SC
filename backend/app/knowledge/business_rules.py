@@ -28,6 +28,7 @@ tables.
 from __future__ import annotations
 
 from app.db.introspect import Schema
+from app.knowledge import functions as function_registry
 
 
 BUSINESS_RULES = """\
@@ -923,6 +924,34 @@ real records, not a vague summary):
 """
 
 
+def _build_function_catalog() -> str:
+    """Render the verified read-only function registry
+    (app/knowledge/functions.py) as its own prompt block, kept in sync with
+    the registry automatically — the registry is the single source of
+    truth, this just formats it for the model."""
+    lines = [
+        "VERIFIED SQL FUNCTIONS — call one of these instead of writing "
+        "equivalent SQL by hand, for the question shapes they cover:",
+        "",
+    ]
+    for fn in function_registry.all_functions():
+        lines.append(f"  * {fn.name}({fn.args}) -> {fn.returns}")
+        lines.append(f"    {fn.when_to_use}")
+    lines += [
+        "",
+        "Call one of these as: SELECT * FROM <function_name>('<search term>').",
+        "These are read-only and go through the exact same guard and "
+        "read-only executor as any other query — never wrap one in "
+        "CALL/procedure syntax.",
+        "For anything these functions don't cover, write normal read-only "
+        "SQL as before — raw text-to-SQL is still the fallback path.",
+    ]
+    return "\n".join(lines)
+
+
+FUNCTION_CATALOG = _build_function_catalog()
+
+
 def build_system_prompt(schema: Schema) -> str:
     """Assemble the full system prompt from static rules + live schema."""
     return f"""\
@@ -933,6 +962,8 @@ is executed for you; you then explain the result.
 {BUSINESS_RULES}
 
 {SQL_CONTRACT}
+
+{FUNCTION_CATALOG}
 
 LIVE DATABASE SCHEMA (authoritative — these are the only tables/columns that exist):
 
