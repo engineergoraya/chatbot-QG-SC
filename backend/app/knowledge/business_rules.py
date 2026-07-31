@@ -259,6 +259,56 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      rather than guessing. Per rule 13, always add one line that this is a
      projection from current stock and historical average usage, not a
      demand forecast (no seasonality/trend modeling).
+     Worked example — "when should we buy resin a85?" (base item word PLUS
+     a grade/code-like token in the SAME question — THE FAILURE MODE TO
+     AVOID: do not concatenate the words into one literal phrase like
+     `i.item ILIKE '%resin a85%'` — "resin a85" never appears contiguously
+     in any single column. CONFIRMED in live data: item_code 16425-60 has
+     item='Resin' and specs='A-85' in SEPARATE columns, so that phrase can
+     never match even before the hyphen problem. Resolve the item_code(s)
+     FIRST, in their own CTE, combining rule 5's combined-column blob, the
+     each-word-matches-somewhere rule, AND grade punctuation-stripping —
+     each technique alone is not enough here, both are needed together):
+       WITH matched_items AS (
+         SELECT item_code FROM items i
+         WHERE regexp_replace(lower(coalesce(i.item,'')||' '||coalesce(i.specs,'')||' '||
+               coalesce(i.group_name,'')||' '||coalesce(i.material_standard,'')||' '||
+               coalesce(i.item_category,'')), '[^a-z0-9]', '', 'g') ILIKE '%resin%'
+           AND regexp_replace(lower(coalesce(i.item,'')||' '||coalesce(i.specs,'')||' '||
+               coalesce(i.group_name,'')||' '||coalesce(i.material_standard,'')||' '||
+               coalesce(i.item_category,'')), '[^a-z0-9]', '', 'g') ILIKE '%a85%'
+       ),
+       usage AS (
+         SELECT item_code, branch,
+                SUM(quantity) / NULLIF(MAX(from_date) - MIN(from_date) + 1, 0) AS daily_usage
+         FROM issuance
+         WHERE item_code IN (SELECT item_code FROM matched_items)
+         GROUP BY item_code, branch
+       )
+       SELECT s.branch, s.item_code, i.item AS item_name, i.specs, i.uom,
+              s.available_qty, COALESCE(u.daily_usage, 0) AS daily_usage,
+              s.available_qty / NULLIF(u.daily_usage, 0) AS days_of_stock_left,
+              (COALESCE(u.daily_usage, 0) * (ab.lead_time_days + ab.safety_days)) AS reorder_level,
+              (s.available_qty - COALESCE(u.daily_usage, 0) * (ab.lead_time_days + ab.safety_days))
+                / NULLIF(u.daily_usage, 0) AS days_until_reorder,
+              CURRENT_DATE + (INTERVAL '1 day' *
+                ((s.available_qty - COALESCE(u.daily_usage, 0) * (ab.lead_time_days + ab.safety_days))
+                  / NULLIF(u.daily_usage, 0))) AS projected_reorder_date
+       FROM stock s
+       JOIN matched_items mi ON mi.item_code = s.item_code
+       JOIN ab_items ab ON ab.item_code = s.item_code AND ab.branch_name = s.branch
+       JOIN items i ON i.item_code = s.item_code
+       LEFT JOIN usage u ON u.item_code = s.item_code AND u.branch = s.branch
+     This correctly returns EVERY qualifying item_code (16425-60 'Resin/
+     A-85' AND 26287-60 'Resin/A-85 / 103 / 1085' both qualify — an
+     OR-across-rows result per rule 5, not a single assumed item), with
+     i.specs included in the SELECT so the answer can tell the matched
+     grades apart. This merge (resolve item_code(s) in their own CTE using
+     the full grade-matching technique, THEN join everything else to that
+     CTE) applies any time a projection/reorder/safety-stock question in
+     THIS rule names a grade-like token alongside the base item word —
+     never fall back to a plain single-word `item ILIKE` filter just
+     because this worked example is more complex than the one above it.
 
 5. JOIN KEY — item_code is the canonical key everywhere, and it is opaque.
    - Join stock / issuance / purchases_data to `items` on `item_code`.
