@@ -272,9 +272,12 @@ class OpenAIClient:
                     "conversation. If the answer genuinely isn't in the history above, "
                     "say so plainly and invite them to ask the data question directly. "
                     "Professional and direct.\n\n"
-                    "FORMAT: answer in short bullet points under bold markdown "
-                    "headings naming what each section covers, never as a paragraph "
-                    "of prose. One sentence per bullet; 3-8 bullets in total."
+                    "FORMAT: bullet points are the default shape rather than a "
+                    "paragraph of prose, but keep it light — use however many "
+                    "bullets the answer needs (one is fine), aim for about a "
+                    "sentence each as a guideline, and add a short bold markdown "
+                    "heading only when the answer has a clear main topic or "
+                    "several separate parts. A simple reply needs no heading."
                 ),
             }
         ] + transcript + [{"role": "user", "content": question}]
