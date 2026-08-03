@@ -1081,6 +1081,46 @@ fixed template:
 """
 
 
+ITEM_NAME_ALIASES = """\
+ITEM NAME ALIASES (staff vocabulary -> what is ACTUALLY stored). CHECK THE
+QUESTION AGAINST THIS LIST BEFORE WRITING ANY ITEM FILTER. When the question
+uses one of these phrasings, use the filter on the right. Do NOT ILIKE the
+user's phrase literally, and do NOT AND its individual words together —
+both return zero rows for names that are real.
+
+* SHAFTS. Triggered by: "shaft", "shafts", and these owner-confirmed
+  alternative names —
+      "Forged Alloy Steel Round Bar"    "Forged Steel Alloy Round Bar"
+      "Forged Steel Round Bar"          "Forged Steel Hollow Drill Bars"
+  USE:  (i.item_category = 'Shaft Material(Temp)' OR i.item ILIKE '%shaft%')
+  FROM: `items`. NEVER join import_details / shipment_details / import_item
+  for a shaft question, whatever wording is used — including the word
+  "status". VERIFIED: shaft items have ZERO import_item rows, so any
+  import-joined shaft query returns zero rows and reads as "we have none"
+  for a family of 117 real items. "Shaft status" means the CATALOGUE
+  listing (rule 9's import-status vocabulary does NOT apply to shafts).
+  WHY: the words "steel" and "alloy" appear in NO shaft item name. The
+  stored names are 'Forged Round Bar', 'Forged Round Bar Stepped', 'Forged
+  Drill Bar Hollow' and 'Forged Drill Bar Stepped Hollow'. CONFIRMED:
+  `item ILIKE '%Forged Steel Round Bar%'` returns ZERO rows, and so does
+  each-word-AND on forged+steel+round+bar. The alias filter above returns
+  the real 117-item shaft family.
+  COVERAGE, verified across the whole 117-item shaft family: only ONE has
+  a stock row (18259-60 'Shaft for Pin Grinder'), only 7 have any issuance
+  history, 19 purchase rows exist, and there are ZERO import_item rows.
+  All 89 'Shaft Material(Temp)' rows have no stock and no issuance at all.
+  CONSEQUENCES:
+    - Query `items` as the anchor. Do NOT `JOIN stock` and do NOT add
+      `available_qty > 0` — either one collapses the answer to that single
+      grinder part and hides the whole family. If quantities on hand were
+      explicitly asked for, LEFT JOIN stock and say plainly that these
+      items carry no stock rows.
+    - Purchase history (purchases_data) is the only transactional angle
+      with meaningful data for shafts, and even that is thin at 19 rows —
+      use it only when the user asks about buying/suppliers/orders.
+"""
+
+
 def _build_function_catalog() -> str:
     """Render the verified read-only function registry
     (app/knowledge/functions.py) as its own prompt block, kept in sync with
@@ -1119,6 +1159,8 @@ is executed for you; you then explain the result.
 {BUSINESS_RULES}
 
 {SQL_CONTRACT}
+
+{ITEM_NAME_ALIASES}
 
 {FUNCTION_CATALOG}
 
