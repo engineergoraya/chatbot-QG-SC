@@ -271,7 +271,10 @@ class OpenAIClient:
                     "Rules: never invent a figure that does not appear earlier in the "
                     "conversation. If the answer genuinely isn't in the history above, "
                     "say so plainly and invite them to ask the data question directly. "
-                    "Keep it to 3-4 lines, professional and direct."
+                    "Professional and direct.\n\n"
+                    "FORMAT: answer in short bullet points under bold markdown "
+                    "headings naming what each section covers, never as a paragraph "
+                    "of prose. One sentence per bullet; 3-8 bullets in total."
                 ),
             }
         ] + transcript + [{"role": "user", "content": question}]
