@@ -1081,6 +1081,39 @@ fixed template:
 """
 
 
+COUNTING_SEMANTICS = """\
+COUNTING — "TYPES" vs "ITEM CODES" vs "QUANTITY" are THREE DIFFERENT
+questions. Decide which one was asked BEFORE writing any COUNT.
+
+The item master holds MANY item_code variants per product name: VERIFIED
+27,762 item_code rows across only 5,200 distinct `items.item` names (5.3
+variants per name — 'Round Bar' alone has 1,062 item_codes, one per size).
+So answering a TYPES question with a row count overstates it several-fold
+and reads as obviously wrong to anyone who knows the catalogue.
+
+* "how many TYPES / KINDS / VARIETIES of X" -> COUNT DISTINCT PRODUCT NAME,
+  not rows. Return one row per distinct items.item with its variant count,
+  so the reader sees both figures at once:
+      SELECT i.item AS item_name,
+             COUNT(*)          AS variant_count,
+             COUNT(*) OVER ()  AS total_types
+      FROM items i
+      WHERE <the X filter>
+      GROUP BY i.item
+      ORDER BY variant_count DESC, i.item
+  State total_types as "the number of types", and say they span
+  SUM(variant_count) item codes in total. NEVER report the item_code count
+  as the type count.
+* "how many X" / "which X are there" (no "types") -> the item_code rows
+  themselves, via rule 17b's listing pattern. These are SKU variants.
+  If the number is much larger than the number of distinct names, say so
+  ("117 item codes across 19 product types") rather than implying they are
+  117 different products.
+* "how much X do we have" -> a physical QUANTITY from stock.available_qty
+  in items.uom — a different question again (rules 16 and 17).
+"""
+
+
 ITEM_NAME_ALIASES = """\
 ITEM NAME ALIASES (staff vocabulary -> what is ACTUALLY stored). CHECK THE
 QUESTION AGAINST THIS LIST BEFORE WRITING ANY ITEM FILTER. When the question
@@ -1105,16 +1138,34 @@ both return zero rows for names that are real.
   `item ILIKE '%Forged Steel Round Bar%'` returns ZERO rows, and so does
   each-word-AND on forged+steel+round+bar. The alias filter above returns
   the real 117-item shaft family.
+  TYPES vs VARIANTS (see the COUNTING block): the shaft filter matches 117
+  item_codes, but those are VARIANTS — the family is only 19 distinct
+  product names. Of those 19, just FIVE are actual shaft MATERIAL forgings
+  ('Forged Round Bar', 'Forged Round Bar Stepped', 'Forged Drill Bar
+  Hollow', 'Forged Drill Bar Stepped Hollow', 'Shaft Black Tank Plate' —
+  89 variants, exactly the item_category='Shaft Material(Temp)' set), and
+  the other 14 are shaft-NAMED parts and accessories (28 variants: seals,
+  a lock, a grinding wheel, gear shafts). For "how many types of shafts",
+  give the 5-material / 19-total split rather than a bare number, and never
+  answer "117 types" — a planner asking about shafts means the forging
+  material, not a 'Rotary Shaft Lip Seal'.
   COVERAGE, verified across the whole 117-item shaft family: only ONE has
   a stock row (18259-60 'Shaft for Pin Grinder'), only 7 have any issuance
   history, 19 purchase rows exist, and there are ZERO import_item rows.
   All 89 'Shaft Material(Temp)' rows have no stock and no issuance at all.
   CONSEQUENCES:
-    - Query `items` as the anchor. Do NOT `JOIN stock` and do NOT add
-      `available_qty > 0` — either one collapses the answer to that single
-      grinder part and hides the whole family. If quantities on hand were
-      explicitly asked for, LEFT JOIN stock and say plainly that these
-      items carry no stock rows.
+    - Query `items` as the anchor. If you touch `stock` AT ALL it MUST be
+      `LEFT JOIN stock` — NEVER a plain/inner `JOIN stock`, and never
+      `available_qty > 0`. This is not a style preference: only 1 of the
+      117 shaft items has a stock row, so an inner join returns ZERO ROWS
+      for the entire family and `available_qty > 0` leaves just the single
+      grinder part 18259-60. Both read as "we have no shafts" about 117
+      real items. VERIFIED: the identical query with `LEFT JOIN stock`
+      returns 89 rows, with plain `JOIN stock` returns 0.
+    - "Do we have any <shaft name>?" is answered from `items` (the item
+      exists in the catalogue) plus a LEFT-JOINed available_qty that will
+      usually be NULL — answer "yes, N variants exist in the catalogue, but
+      none carry a stock row", never "no".
     - Purchase history (purchases_data) is the only transactional angle
       with meaningful data for shafts, and even that is thin at 19 rows —
       use it only when the user asks about buying/suppliers/orders.
@@ -1161,6 +1212,8 @@ is executed for you; you then explain the result.
 {SQL_CONTRACT}
 
 {ITEM_NAME_ALIASES}
+
+{COUNTING_SEMANTICS}
 
 {FUNCTION_CATALOG}
 
