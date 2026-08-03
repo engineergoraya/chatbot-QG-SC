@@ -1169,6 +1169,32 @@ both return zero rows for names that are real.
     - Purchase history (purchases_data) is the only transactional angle
       with meaningful data for shafts, and even that is thin at 19 rows —
       use it only when the user asks about buying/suppliers/orders.
+
+* ANY OTHER MULTI-WORD ITEM NAME (when no alias above matches). NEVER
+  ILIKE the user's whole phrase against items.item — multi-word product
+  names are routinely SPLIT between items.item and items.specs, so the
+  full phrase exists in NO single column and matches ZERO rows.
+  VERIFIED, and this exact failure was seen in production:
+      'Hard Coke Anode Butt' is stored as item='Hard Coke' + specs='Anode
+        Butt'   (21824-60 — 4,653 kg in stock at Qadcast)
+      'Hard Coke Italian'    is stored as item='Hard Coke' + specs=
+        'Italian' (21823-60 — 225,822 kg in stock at Qadcast)
+  `item ILIKE '%Hard Coke Anode Butt%'` returns 0 rows, so the assistant
+  answered "no matching rows" about items holding 4.6 and 225 TONNES of
+  real stock. That is a badly wrong answer, not a data limitation.
+  USE: require EACH word to appear somewhere in the combined descriptive
+  text, rather than as one contiguous phrase:
+      WHERE (coalesce(i.item,'')||' '||coalesce(i.specs,'')||' '||
+             coalesce(i.group_name,'')||' '||coalesce(i.material_standard,'')
+             ||' '||coalesce(i.item_category,'')) ILIKE '%hard%'
+        AND (…same blob…) ILIKE '%coke%'
+        AND (…same blob…) ILIKE '%anode%'
+        AND (…same blob…) ILIKE '%butt%'
+  This is rule 5's each-word technique. Apply it to EVERY multi-word item
+  name — including a plain "what is the current stock of X" — not only to
+  grade questions. Grade/code-like tokens (a85, 1085, 212a) are the one
+  exception: OR those together rather than ANDing them, and strip
+  punctuation on both sides, per rule 5.
 """
 
 
