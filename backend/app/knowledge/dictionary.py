@@ -15,12 +15,14 @@ This module loads the two structured knowledge files the user supplied
 
 IMPORTANT: only the human-language "meaning" is served verbatim. The
 "database_term"/"fields" values in these JSON files describe the ORIGINAL
-PLANNED schema, which has since diverged from the live database in a few
-places (see app/knowledge/business_rules.py, rule 4) — so those fields are
-deliberately NOT surfaced here to avoid contradicting the verified,
-live-schema rules used for actual SQL generation. A handful of entries whose
-plain-English meaning itself assumed the old design (Critical Item, Reorder
-Level, Safety Stock, Stock Health) are explicitly corrected below.
+PLANNED schema, which the live database no longer resembles at all (it was
+replaced wholesale in the 2026-08-03 load — see the note at the top of
+app/knowledge/business_rules.py) — so those fields are deliberately NOT
+surfaced here to avoid contradicting the verified, live-schema rules used for
+actual SQL generation. The entries whose plain-English meaning itself assumed
+the old design (Critical Item, Reorder Level, Safety Stock, Stock Health, LC,
+ALC/ELC) are explicitly corrected below and were re-checked against the
+current data on 2026-08-03.
 """
 
 from __future__ import annotations
@@ -89,45 +91,52 @@ def _has_mid_sentence_capital(question: str) -> bool:
 # business_dictionary.json / the synonym map (case-insensitive).
 _MEANING_OVERRIDES = {
     "critical item": (
-        "High risk-of-stockout item. The live database has no separate "
-        "'Critical' flag — the closest real signal is ab_items.rank = 'A' "
-        "(the higher tier of an ABC classification), available only for "
-        "items stocked at Qadcast (Pvt) Ltd. and Qadri Brothers (Pvt.) Ltd. "
-        "(Unit-II), the only two branches ab_items currently covers."
+        "High risk-of-stockout item. The live database has no 'Critical' "
+        "flag and no ABC rank at all. The closest real signal is the derived "
+        "stock status: an item+branch is 'Out of Stock' when available_qty "
+        "is at or below zero, and 'Below Reorder' when available_qty is "
+        "under its derived reorder level (see Reorder Level). Only the 1,374 "
+        "of 6,070 stock rows that have recent requisition demand can be "
+        "classified at all."
     ),
     "reorder level": (
-        "Minimum stock level before replenishment is needed. The live "
-        "database has no stored reorder_level column — it is computed live "
-        "as branch_daily_usage * (lead_time_days + safety_days), using each "
-        "item+branch's own row in ab_items and its own issuance history. "
-        "Only computable for the two branches ab_items covers."
+        "Minimum stock level before replenishment is needed. Nothing is "
+        "stored — the stock.reorder_level column exists but is empty on "
+        "every row — so it is derived per item and branch as "
+        "avg_daily_demand * lead_time_days * 1.2, where avg_daily_demand is "
+        "the last 180 days of store requisition quantity divided by 180, "
+        "lead_time_days is that item's average stock-in date minus prepare "
+        "date over completed cycles (about 22 days overall, defaulting to 30 "
+        "where there is no history), and 1.2 applies the 20% safety factor."
     ),
     "safety stock / days": (
-        "Buffer stock to absorb demand/lead-time variability. Computed live "
-        "as branch_daily_usage * ab_items.safety_days — not a stored total, "
-        "and only available for the two branches ab_items covers."
+        "Buffer stock to absorb demand and lead-time variability. There is "
+        "no safety-stock column and no safety-days column in the live "
+        "database. The buffer is applied as a flat 20% safety factor inside "
+        "the derived reorder level (the 1.2 multiplier) rather than being "
+        "stored or reported as its own quantity."
     ),
     "stock health": (
-        "A stock-days coverage concept (how many days of stock remain at "
-        "the current usage rate). The live database has no dedicated "
-        "stock_health column; it must be computed from stock.available_qty "
-        "and recent issuance volume for the item/branch in question."
+        "A stock-days coverage concept (how many days of stock remain at the "
+        "current usage rate). There is no stock_health column. It is "
+        "computed as available_qty divided by average daily issuance over "
+        "the last 90 days for that item and branch, and is undefined "
+        "(unknown, not zero) for items with no issuance history."
     ),
     "lc": (
         "Letter of Credit — a bank instrument guaranteeing payment to a "
-        "foreign supplier. Tracked in payment_history (value_lc, "
-        "lc_payment_status = 'Paid'/'Unpaid'), not on import_details — "
-        "there is no lc_status column on the import shipment itself. "
-        "'Retirement' is the final settlement of the LC (payment_history.retire_date)."
+        "foreign supplier. In the live database only the CHOICE of "
+        "instrument is recorded, on consignments.payment_instrument ('LC', "
+        "'100%LC', 'Advance', 'CAD'). The payments table is empty, so there "
+        "is no paid/unpaid status, no retirement date and no bank-charge "
+        "data — whether an LC has actually been settled cannot be answered."
     ),
     "alc / elc": (
-        "This abbreviation covers TWO distinct things in the live data, on "
-        "different columns of import_item — do not conflate them. (1) "
-        "Landed cost per unit: elc_amount_per_unit = ESTIMATED landed cost, "
-        "alc_amount_per_unit = ACTUAL landed cost (duty + clearance "
-        "included). (2) A separate LC-amendment tracking pair, "
-        "alc_status/alc_date, for whether an Amended/Established Letter of "
-        "Credit has been processed for that import line."
+        "Estimated and Actual Landed Cost per unit — the cost of an imported "
+        "item once duty and clearance are included. The live database has "
+        "elc and alc columns on consignment_items, but both are empty on "
+        "every one of the 161 import lines, so landed cost and its variance "
+        "cannot be reported from this data."
     ),
 }
 

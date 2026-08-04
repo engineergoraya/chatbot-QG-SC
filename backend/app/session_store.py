@@ -56,11 +56,35 @@ class SessionData:
 MAX_TRANSCRIPT_TURNS = 6
 
 
-def append_turn(transcript: list[dict], question: str, answer: str) -> list[dict]:
-    """Append one exchange to the transcript, trimmed to the recent window."""
+# Marker that separates the user-visible answer from the query that produced
+# it, inside a stored assistant turn. The conversational answerer is told what
+# this block means (see openai_client.answer_conversationally) so it can
+# explain HOW a figure was derived — "how did you calculate that?", "why did
+# you say none are in transit?" — which is impossible from the answer text
+# alone. Never shown to the user verbatim.
+SQL_NOTE_MARKER = "[SQL RUN FOR THIS ANSWER — internal note, not shown to the user]"
+
+
+def append_turn(
+    transcript: list[dict],
+    question: str,
+    answer: str,
+    sql: str | None = None,
+) -> list[dict]:
+    """Append one exchange to the transcript, trimmed to the recent window.
+
+    When the answer came from a query, the SQL is stored alongside it. A
+    follow-up asking HOW a number was reached is a question about this
+    conversation, not a new data request, and without the query the
+    assistant has nothing to reconstruct the method from — it used to fall
+    through to a fresh (and often empty) query instead.
+    """
+    assistant_content = answer
+    if sql:
+        assistant_content = f"{answer}\n\n{SQL_NOTE_MARKER}\n{sql.strip()}"
     updated = transcript + [
         {"role": "user", "content": question},
-        {"role": "assistant", "content": answer},
+        {"role": "assistant", "content": assistant_content},
     ]
     return updated[-(MAX_TRANSCRIPT_TURNS * 2):]
 

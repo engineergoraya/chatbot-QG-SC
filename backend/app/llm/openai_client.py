@@ -28,6 +28,7 @@ import time
 
 from app import config
 from app.knowledge.business_rules import RESPONSE_STYLE
+from app.session_store import SQL_NOTE_MARKER
 
 try:
     from openai import (
@@ -86,7 +87,8 @@ _GENERATION_REMINDER_FRESH = (
     "no time period to ask for at all; answer them directly with SQL, "
     "never CLARIFY_TIME_PERIOD. If genuinely unsure which kind this is, "
     "prefer answering directly over asking. (2) if this is a STOCK "
-    "quantity question, join items and include items.uom on every "
+    "quantity question, join items and include "
+    "items.default_unit_of_measurement on every "
     "quantity per rule 5. (3) per rule 17b, if this asks HOW MANY / "
     "WHICH / LIST over identifiable RECORDS (shipments, items, POs, "
     "suppliers, requisitions, jobs), do NOT return a bare COUNT(*) — "
@@ -103,8 +105,8 @@ _GENERATION_REMINDER_FOLLOWUP = (
     "default'). Do NOT output CLARIFY_TIME_PERIOD again for this turn; "
     "write the actual SQL now, filtered to that resolved period (per rule "
     "14's reply-handling). Separately, if this is a STOCK quantity "
-    "question, join items and include items.uom on every quantity per "
-    "rule 5."
+    "question, join items and include "
+    "items.default_unit_of_measurement on every quantity per rule 5."
 )
 
 # Second sentinel escape (alongside CLARIFY_TIME_PERIOD): some messages in a
@@ -121,10 +123,25 @@ _CONVERSATIONAL_ESCAPE = (
     "you to rephrase/re-explain something you ALREADY answered (\"explain "
     "that more simply\", \"why does that matter?\"), or is pure "
     "pleasantry (\"thanks\") — then output ONLY the single line "
-    "`CONVERSATIONAL:` and nothing else. Do NOT write SQL for those. This "
-    "does NOT apply to a follow-up that genuinely needs NEW data (\"what "
-    "about the ones awaiting sailing?\", \"and their total value?\") — "
-    "those are real data questions; write SQL for them as normal."
+    "`CONVERSATIONAL:` and nothing else. Do NOT write SQL for those.\n"
+    "THIS INCLUDES QUESTIONS ABOUT YOUR OWN PREVIOUS ANSWER — how you "
+    "arrived at it, what you counted, or whether it was right. Examples "
+    "that MUST take this escape: \"how did you calculate that?\", \"how did "
+    "you get that number?\", \"how you calculated the in transit shafts\", "
+    "\"how did you say there are none in transit?\", \"why did you say "
+    "that?\", \"where does that figure come from?\", \"what query did you "
+    "run?\", \"are you sure?\". These ask you to JUSTIFY work you already "
+    "did — the answer is in the conversation (the query you ran is stored "
+    "with your previous answer), NOT in a new query. Re-running SQL for "
+    "them is wrong twice over: it answers a question nobody asked, and when "
+    "it returns no rows the user gets a canned \"no matching rows\" message "
+    "in response to a perfectly clear question about your own reasoning.\n"
+    "This does NOT apply to a follow-up that genuinely needs NEW data "
+    "(\"what about the ones awaiting sailing?\", \"and their total "
+    "value?\") — those are real data questions; write SQL for them as "
+    "normal. The test is simple: if answering requires looking at the "
+    "database again, it is a data question; if it only requires looking at "
+    "what you already said and did, take this escape."
 )
 
 # Third sentinel escape: a genuine forecasting/projection intent ("forecast
@@ -268,6 +285,23 @@ class OpenAIClient:
                     "history — it is a question about the conversation itself (or a "
                     "request to rephrase/clarify something you already said), not a "
                     "request for new data.\n\n"
+                    "EXPLAINING HOW A FIGURE WAS PRODUCED: some of your earlier "
+                    "answers carry an internal note beginning "
+                    f"'{SQL_NOTE_MARKER}' followed by the actual SQL that produced "
+                    "that answer. When the user asks how you calculated something, "
+                    "why you said what you said, or what you counted, USE that query "
+                    "to explain the method — in plain business terms: which tables "
+                    "and columns you read, what you filtered on, and what you counted "
+                    "or summed. Do not paste the raw SQL unless they explicitly ask "
+                    "to see the query. Never show the marker line itself.\n"
+                    "BE HONEST WHEN THE METHOD WAS THE PROBLEM. A count of zero means "
+                    "only that no rows matched THAT query. If the query joined a "
+                    "table that simply holds no rows for the thing asked about, say "
+                    "so plainly — 'those records aren't tracked in that table at all, "
+                    "so a zero there doesn't mean zero in reality' — rather than "
+                    "defending the number. If, looking at the stored query, the "
+                    "earlier answer now looks wrong or misleading, say that directly "
+                    "and briefly explain what would answer it properly.\n\n"
                     "Rules: never invent a figure that does not appear earlier in the "
                     "conversation. If the answer genuinely isn't in the history above, "
                     "say so plainly and invite them to ask the data question directly. "
@@ -298,7 +332,7 @@ class OpenAIClient:
         asked, a repair call has nothing to ground a correction in except
         the bare error text — which previously caused the model to invent
         an entirely unrelated but syntactically-valid query (e.g. a plain
-        `SELECT * FROM ab_items` for a "what did Production consume"
+        `SELECT * FROM stock` for a "what did Production consume"
         question) instead of fixing the real one. Always pass the real
         values; never call this with a placeholder.
         """

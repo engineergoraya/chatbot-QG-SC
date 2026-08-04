@@ -31,7 +31,7 @@ from app.db import executor
 from app.db.introspect import introspect
 from app.graph import confidence, guard
 from app.graph.state import ChatState
-from app.knowledge import dictionary
+from app.knowledge import coverage, dictionary
 from app.knowledge.business_rules import build_system_prompt
 from app.knowledge.rag import get_index
 from app.llm.openai_client import CONVERSATIONAL_PREFIX, get_client
@@ -224,7 +224,9 @@ def conversational_answer(state: ChatState) -> ChatState:
 
 def validate_sql(state: ChatState) -> ChatState:
     schema = introspect()
-    result = guard.validate(state["sql"], schema)
+    result = guard.validate(
+        state["sql"], schema, question=state.get("original_question")
+    )
     return {
         **state,
         "guard_ok": result.ok,
@@ -330,9 +332,17 @@ def repair_sql(state: ChatState) -> ChatState:
 def generate_answer(state: ChatState) -> ChatState:
     client = get_client()
     preview = _preview(state["columns"], state["rows"])
+    # A verified coverage gap (app/knowledge/coverage.py) means part of what
+    # was asked cannot be reported from this data at all. The guard already
+    # kept the empty domain out of the SQL; this makes the ANSWER say why,
+    # instead of trailing off into "the query did not provide that".
+    gap_note = coverage.note_for_question(state.get("original_question") or "")
+    question_for_answer = state["llm_question"]
+    if gap_note:
+        question_for_answer = f"{question_for_answer}\n\n{gap_note}"
     try:
         answer = client.explain(
-            state["llm_question"],
+            question_for_answer,
             state["safe_sql"],
             preview,
             transcript=state.get("transcript") or [],

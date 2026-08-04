@@ -147,7 +147,10 @@ def _finalize(
     answer_text = result.get("answer")
     if answer_text:
         session.transcript = append_turn(
-            session.transcript, result.get("original_question", ""), answer_text
+            session.transcript,
+            result.get("original_question", ""),
+            answer_text,
+            sql=result.get("safe_sql"),
         )
     store.save(session_id, session)
 

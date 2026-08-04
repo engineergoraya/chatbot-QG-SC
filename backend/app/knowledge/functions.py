@@ -37,46 +37,25 @@ class SqlFunction:
     when_to_use: str  # one-line routing guidance for the model
 
 
-_FUNCTIONS: list[SqlFunction] = [
-    SqlFunction(
-        name="current_stock_of",
-        arg_count=1,
-        args="search_item text",
-        returns="current stock for the matched item(s)",
-        when_to_use=(
-            "For a simple 'current stock of X' where X is a plain item NAME "
-            "word. Do NOT use it when X includes a grade/code token (e.g. "
-            "'a85', '1085') — it matches items.item only, never items.specs, "
-            "so a grade search returns zero rows; write normal SQL instead."
-        ),
-    ),
-    SqlFunction(
-        name="supplier_delay",
-        arg_count=1,
-        args="search_item text",
-        returns="late suppliers and their delay in days, for the matched item",
-        when_to_use=(
-            "For supplier lateness/delay questions about a specific item named "
-            "by a plain NAME word. Same items.item-only limitation as above — "
-            "use normal SQL for a grade/code token."
-        ),
-    ),
-    SqlFunction(
-        name="reorder_recommendation",
-        arg_count=1,
-        args="search_item text",
-        returns="reorder timing and recommendation for the matched item",
-        when_to_use=(
-            "For 'when should we reorder / buy X' ONLY when X is a plain item "
-            "NAME word AND the item is known to be stock-carried. It inner-"
-            "joins stock and matches items.item only, so it silently omits "
-            "grade/spec matches and every item with no stock row (about two "
-            "thirds of issued items) — when in doubt prefer rule 4's "
-            "item-anchored LEFT JOIN query, which reports those cases instead "
-            "of dropping them."
-        ),
-    ),
-]
+# EMPTY AS OF 2026-08-03. The database this app now points at defines NO
+# user functions at all — `\df` in `supplychain_automation` returns zero
+# rows. The three that used to live here (current_stock_of, supplier_delay,
+# reorder_recommendation) belonged to the previous, flat data load and were
+# dropped along with its schema; every one of them also referenced columns
+# (items.item, items.specs, ab_items) that no longer exist.
+#
+# Leaving them registered would be actively harmful: the guard would happily
+# pass `SELECT * FROM current_stock_of('resin')` — the registry is what
+# authorizes a function call past the known-table check — and the query would
+# then fail at execution with "function does not exist", turning a perfectly
+# answerable question into an error. With the list empty, the guard rejects
+# such a call up front and business_rules.build_system_prompt() omits the
+# function-catalog block entirely, so the model never learns about functions
+# that aren't there and simply writes normal SQL.
+#
+# To re-introduce one: create it in the database, GRANT EXECUTE to
+# chatbot_ro, then add an entry here — no other file needs to change.
+_FUNCTIONS: list[SqlFunction] = []
 
 FUNCTION_REGISTRY: dict[str, SqlFunction] = {f.name.lower(): f for f in _FUNCTIONS}
 

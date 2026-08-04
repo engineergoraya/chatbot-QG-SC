@@ -44,6 +44,7 @@ from sqlparse.tokens import Keyword, DML, DDL, Punctuation, Comment as CommentTo
 
 from app import config
 from app.db.introspect import Schema
+from app.knowledge import coverage
 from app.knowledge import functions as function_registry
 
 
@@ -248,7 +249,22 @@ def _ensure_nulls_last(sql: str) -> str:
     )
 
 
-def validate(sql: str, schema: Schema, max_rows: int | None = None) -> GuardResult:
+def validate(
+    sql: str,
+    schema: Schema,
+    max_rows: int | None = None,
+    question: str | None = None,
+) -> GuardResult:
+    """Validate a generated query.
+
+    `question` is optional and used only for the coverage-gap check (see
+    app/knowledge/coverage.py): a query is rejected when it reads a domain
+    that is verified to hold NO rows for the entity the question is about,
+    because such a query can only return a misleading zero or — if the
+    entity filter is dropped to avoid that zero — a table-wide total
+    presented as the entity's. Callers that omit it keep the previous
+    behaviour exactly.
+    """
     if max_rows is None:
         max_rows = config.MAX_ROWS
 
@@ -300,6 +316,11 @@ def validate(sql: str, schema: Schema, max_rows: int | None = None) -> GuardResu
             ok=False,
             reason=f"Query references unknown table(s): {', '.join(sorted(unknown))}.",
         )
+
+    if question:
+        gap = coverage.find_violation(question, refs)
+        if gap:
+            return GuardResult(ok=False, reason=gap.explanation)
 
     safe = _apply_limit(cleaned, max_rows)
     safe = _ensure_nulls_last(safe)
