@@ -184,3 +184,58 @@ def test_registered_gap_blocks_and_reports(monkeypatch):
     assert not result.ok
     assert "widgets are not imported" in result.reason
     assert coverage.note_for_question("how many widgets") == "widgets do not appear in import records"
+
+
+# --- entity resolver + zero-count detection ---------------------------------
+# Regression cover for a repeated production failure: a name the user typed
+# not matching the stored spelling was reported as absence.
+#   "sourcing officer hamza Ahmed" -> stored 'Hamza Ahmad' (65 orders),
+#   answered "no orders are recorded under this sourcing officer".
+# The model cannot know the stored spelling, so resolution is deterministic.
+
+from app.graph.nodes import _is_all_zero_count
+from app.knowledge import entity_resolver
+
+
+class _Outcome:
+    def __init__(self, rows, row_count=None):
+        self.rows = rows
+        self.row_count = row_count if row_count is not None else len(rows)
+
+
+def test_zero_count_row_is_treated_as_empty():
+    """SELECT COUNT(*) matching nothing returns ONE row containing 0 — not an
+    empty set — so it used to be narrated as a real finding."""
+    assert _is_all_zero_count(_Outcome([{"orders": 0}]))
+    assert _is_all_zero_count(_Outcome([{"orders": 0, "amount_pkr": None}]))
+
+
+def test_real_rows_are_not_treated_as_empty():
+    assert not _is_all_zero_count(_Outcome([{"orders": 13}]))
+    # A GROUP BY row naming a supplier with a zero measure is a real finding.
+    assert not _is_all_zero_count(_Outcome([{"supplier": "Ayyan Traders", "orders": 0}]))
+    # Multiple rows are never this case.
+    assert not _is_all_zero_count(_Outcome([{"orders": 0}, {"orders": 0}]))
+    assert not _is_all_zero_count(_Outcome([]))
+    # A zero-valued boolean/flag column is not a count.
+    assert not _is_all_zero_count(_Outcome([{"is_active": False}]))
+
+
+def test_resolver_finds_misspelled_name(monkeypatch):
+    monkeypatch.setattr(
+        entity_resolver, "_cache",
+        {("purchases_data", "sourcing_o"): ["Hamza Ahmad", "Adnan Shami"]},
+    )
+    names = [c.value for c in entity_resolver.find_candidates(
+        "how many orders are under the sourcing officer hamza Ahmed in purchases"
+    )]
+    assert "Hamza Ahmad" in names
+
+
+def test_resolver_stays_quiet_when_no_name_is_named(monkeypatch):
+    monkeypatch.setattr(
+        entity_resolver, "_cache",
+        {("purchases_data", "sourcing_o"): ["Hamza Ahmad", "Adnan Shami"]},
+    )
+    assert entity_resolver.find_candidates("what is our current available inventory value?") == []
+    assert entity_resolver.describe_candidates("") is None

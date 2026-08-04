@@ -332,8 +332,14 @@ class OpenAIClient:
         system_prompt: str,
         sql: str,
         transcript: list[dict] | None = None,
+        candidates: str | None = None,
     ) -> str:
         """Explain a query that ran fine but matched NOTHING.
+
+        `candidates` is the entity resolver's "did you mean" note (real
+        values from the database that resemble a name in the question). When
+        present it is the MOST important input — an empty result is usually
+        a spelling mismatch, not an absence.
 
         A zero-row result is frequently the REAL answer ("no shafts arrived
         in July"), not a failed search — but it was previously answered with
@@ -382,7 +388,8 @@ class OpenAIClient:
                 "content": (
                     f"User question: {question}\n\n"
                     f"Query that returned zero rows:\n{sql}\n\n"
-                    "Explain the empty result."
+                    + (f"{candidates}\n\n" if candidates else "")
+                    + "Explain the empty result."
                 ),
             },
         ]

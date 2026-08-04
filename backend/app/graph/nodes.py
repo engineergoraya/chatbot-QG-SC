@@ -31,7 +31,9 @@ from app.db import executor
 from app.db.introspect import introspect
 from app.graph import confidence, guard
 from app.graph.state import ChatState
-from app.knowledge import coverage, dictionary
+from decimal import Decimal
+
+from app.knowledge import coverage, dictionary, entity_resolver
 from app.knowledge.business_rules import build_system_prompt
 from app.knowledge.rag import get_index
 from app.llm.openai_client import CONVERSATIONAL_PREFIX, get_client
@@ -222,6 +224,41 @@ def conversational_answer(state: ChatState) -> ChatState:
     }
 
 
+def _is_all_zero_count(outcome) -> bool:
+    """True for the 'successful' result that is really a non-answer: ONE row
+    whose every numeric column is zero.
+
+    `SELECT COUNT(*) ... WHERE supplier ILIKE '%AB traders%'` returns one row
+    containing 0. That is not an empty result set, so it used to sail through
+    the normal answer path and get narrated as a confident finding ("there
+    are 0 orders from AB Traders"), when the truth was that the name never
+    matched anything. Routing it through the empty-result explainer instead
+    lets the resolver offer the real candidates.
+
+    Deliberately narrow: it requires at least one numeric column, every
+    numeric column to be zero, and no non-numeric column carrying a value
+    (a GROUP BY row like ('Ayyan Traders', 0) is a real finding, not this).
+    """
+    if outcome.row_count != 1 or not outcome.rows:
+        return False
+    row = outcome.rows[0]
+    if not row:
+        return False
+    numeric_seen = False
+    for value in row.values():
+        if value is None:
+            continue
+        if isinstance(value, bool):
+            return False
+        if isinstance(value, (int, float, Decimal)):
+            numeric_seen = True
+            if value != 0:
+                return False
+        else:
+            return False  # a text/date column means this is a real row
+    return numeric_seen
+
+
 def validate_sql(state: ChatState) -> ChatState:
     schema = introspect()
     result = guard.validate(
@@ -248,7 +285,7 @@ def execute_sql(state: ChatState) -> ChatState:
             "truncated": False,
         }
 
-    if outcome.row_count == 0:
+    if outcome.row_count == 0 or _is_all_zero_count(outcome):
         # A zero-row result is frequently the REAL answer ("no shafts
         # arrived in July"), so explain it against the business rules
         # instead of returning boilerplate that reads like a system
@@ -261,12 +298,23 @@ def execute_sql(state: ChatState) -> ChatState:
             "of the catalogue. Try naming the item slightly differently, "
             "or ask about its usage/purchase history instead."
         )
+        # The name the user typed may simply not be how it is spelled in
+        # the data ('Hamza Ahmed' vs the stored 'Hamza Ahmad'). Resolve it
+        # against the real distinct values so the answer can offer the
+        # actual candidates instead of asserting the entity has no records.
+        try:
+            candidates = entity_resolver.describe_candidates(
+                state.get("original_question") or ""
+            )
+        except Exception:
+            candidates = None
         try:
             empty_answer = get_client().explain_empty_result(
                 state["llm_question"],
                 build_system_prompt(introspect()),
                 state["safe_sql"],
                 transcript=state.get("transcript") or [],
+                candidates=candidates,
             )
         except Exception:
             pass
