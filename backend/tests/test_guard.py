@@ -9,10 +9,13 @@ the guard only ever calls `schema.has_table()`.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from app.db.introspect import Schema, Table
 from app.graph import guard
+from app.knowledge import coverage
 from app.knowledge import functions as function_registry
 
 
@@ -130,63 +133,54 @@ def test_approved_function_inside_cte_still_validated(registered_fn):
     assert not result.ok
     assert "current_stock_of" in result.reason
 
-
 # --- coverage-gap check (app/knowledge/coverage.py) -------------------------
-# Regression cover for a production failure: "how many types of shafts are
-# there, and how many are in transit?" was answered "0 shafts in transit",
-# then (after prompt-only fixes) "11 shafts in transit" — 11 being the count
-# of ALL in-transit consignments. Shafts have zero consignment_items rows, so
-# the guard now rejects any shaft query that touches the import tables.
+# The registry is intentionally EMPTY. A shaft/imports gap was registered on
+# 2026-08-03 and removed the next day: the next data load added 79 imported
+# 'Forged Steel Round Bar' lines, so the "shafts are never imported" premise
+# was false and the check would have BLOCKED the correct query. These tests
+# pin the behaviour that matters — an empty registry must never reject.
 
-_IMPORT_SCHEMA = ("items", "stock", "purchases_data", "consignments", "consignment_items")
+def test_no_gaps_registered_by_default():
+    assert coverage.all_gaps() == []
 
 
-def test_shaft_question_touching_imports_is_rejected():
+def test_shaft_import_query_is_allowed_now_that_shafts_are_imported():
+    """Regression: shafts ARE imported (79 'Forged Steel Round Bar' lines).
+    A shaft + imports query must pass the guard, not be rejected."""
     sql = (
-        "SELECT count(*) FROM consignments c "
-        "JOIN consignment_items ci ON ci.consignment_id = c.id "
-        "WHERE c.current_status = 'In Transit'"
-    )
-    result = guard.validate(
-        sql, _schema(*_IMPORT_SCHEMA), question="how many shafts are in transit"
-    )
-    assert not result.ok
-    assert "import" in result.reason.lower()
-
-
-def test_shaft_question_with_uncorrelated_import_subquery_is_rejected():
-    """The fabrication case: no shaft filter at all, so the count is of every
-    consignment. Must still be caught."""
-    sql = (
-        "WITH shaft_types AS (SELECT name FROM items WHERE name ILIKE '%shaft%') "
-        "SELECT (SELECT COUNT(*) FROM consignments WHERE current_status = 'In Transit') "
-        "AS in_transit FROM shaft_types"
+        "SELECT ci.item_name, count(*) FROM consignment_items ci "
+        "JOIN consignments c ON c.id = ci.consignment_id "
+        "WHERE ci.item_name ILIKE '%forged steel round bar%' "
+        "AND c.current_status = 'In Transit' GROUP BY ci.item_name"
     )
     result = guard.validate(
         sql,
-        _schema(*_IMPORT_SCHEMA),
+        _schema("items", "consignments", "consignment_items"),
         question="how many types of shafts are there, and how many are in transit",
     )
+    assert result.ok, result.reason
+
+
+def test_coverage_check_is_inert_with_an_empty_registry():
+    sql = "SELECT count(*) FROM consignments WHERE current_status = 'In Transit'"
+    schema = _schema("consignments")
+    assert guard.validate(sql, schema, question="anything at all").ok
+    assert guard.validate(sql, schema).ok
+
+
+def test_registered_gap_blocks_and_reports(monkeypatch):
+    """The mechanism still works when a gap IS registered."""
+    gap = coverage.DomainGap(
+        name="test-gap",
+        question_pattern=re.compile(r"\bwidgets?\b", re.IGNORECASE),
+        forbidden_tables=frozenset({"consignments"}),
+        verified="test fixture",
+        explanation="widgets are not imported; rewrite without consignments",
+        answer_note="widgets do not appear in import records",
+    )
+    monkeypatch.setattr(coverage, "_GAPS", [gap])
+    sql = "SELECT count(*) FROM consignments"
+    result = guard.validate(sql, _schema("consignments"), question="how many widgets are in transit")
     assert not result.ok
-
-
-def test_shaft_question_without_imports_passes():
-    sql = "SELECT name, count(*) FROM items WHERE name ILIKE '%shaft%' GROUP BY name"
-    result = guard.validate(
-        sql, _schema(*_IMPORT_SCHEMA), question="how many types of shafts are there"
-    )
-    assert result.ok, result.reason
-
-
-def test_non_shaft_question_may_still_use_imports():
-    sql = "SELECT count(*) FROM consignments WHERE current_status = 'In Transit'"
-    result = guard.validate(
-        sql, _schema(*_IMPORT_SCHEMA), question="how many imports are on water"
-    )
-    assert result.ok, result.reason
-
-
-def test_coverage_check_is_skipped_without_a_question():
-    """Callers that don't pass a question keep the previous behaviour."""
-    sql = "SELECT count(*) FROM consignments WHERE current_status = 'In Transit'"
-    assert guard.validate(sql, _schema(*_IMPORT_SCHEMA)).ok
+    assert "widgets are not imported" in result.reason
+    assert coverage.note_for_question("how many widgets") == "widgets do not appear in import records"

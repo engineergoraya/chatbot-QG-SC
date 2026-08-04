@@ -28,7 +28,7 @@ import time
 
 from app import config
 from app.knowledge.business_rules import RESPONSE_STYLE
-from app.session_store import SQL_NOTE_MARKER
+from app.session_store import SQL_NOTE_MARKER, strip_sql_notes
 
 try:
     from openai import (
@@ -78,7 +78,11 @@ _GENERATION_REMINDER_FRESH = (
     "total/average/ranking over a date RANGE on a dated transaction table "
     "(e.g. 'total purchases', 'average delay', 'what did X consume') where "
     "no period is stated — for those, output ONLY the CLARIFY_TIME_PERIOD "
-    "line, do not silently assume all-time. Rule 14 does NOT apply to a "
+    "line, do not silently assume all-time. A period IS stated (so do NOT "
+    "ask) whenever the question contains one, including forward-looking "
+    "ones: 'in the next 3 months', 'next quarter', 'upcoming', 'this "
+    "month', 'last 6 months'. Asking 'for what time period?' about a "
+    "question that already says 'in the next 3 months' is always wrong. Rule 14 does NOT apply to a "
     "CURRENT status/snapshot question — 'how many are on water/in transit "
     "right now', 'which items need reorder', 'which items are critical', "
     "'when should we reorder/order next' (a projection off CURRENT stock + "
@@ -393,7 +397,7 @@ class OpenAIClient:
                     "CONTINUITY only."
                 ),
             },
-            *(transcript or []),
+            *strip_sql_notes(transcript or []),
             {
                 "role": "user",
                 "content": (
@@ -439,7 +443,7 @@ class OpenAIClient:
                     "as if it answered this one."
                 ),
             },
-            *(transcript or []),
+            *strip_sql_notes(transcript or []),
             {
                 "role": "user",
                 "content": (

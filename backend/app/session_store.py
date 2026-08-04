@@ -65,6 +65,27 @@ MAX_TRANSCRIPT_TURNS = 6
 SQL_NOTE_MARKER = "[SQL RUN FOR THIS ANSWER — internal note, not shown to the user]"
 
 
+def strip_sql_notes(transcript: list[dict]) -> list[dict]:
+    """Return the transcript with the internal SQL notes removed.
+
+    ONLY `answer_conversationally` should ever see the stored queries — it
+    needs them to explain how a figure was derived. Every other consumer
+    (explain, explain_forecast) is handed the transcript purely for
+    conversational continuity, and passing the raw note through caused the
+    model to echo the marker line and the SQL verbatim into a user-facing
+    answer. Strip it at the point of use so a new caller can't reintroduce
+    that leak by forgetting.
+    """
+    cleaned: list[dict] = []
+    for msg in transcript:
+        content = msg.get("content") or ""
+        if SQL_NOTE_MARKER in content:
+            content = content.split(SQL_NOTE_MARKER, 1)[0].rstrip()
+            msg = {**msg, "content": content}
+        cleaned.append(msg)
+    return cleaned
+
+
 def append_turn(
     transcript: list[dict],
     question: str,
