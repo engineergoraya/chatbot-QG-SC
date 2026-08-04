@@ -610,19 +610,49 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      'QEN' (1,060 rows), 'QE' (913), 'QCL' (422), 'QB2' (299), 'QBL' (58),
      'QE-II' (17), 'IOL' (9).
    - The imports domain uses a `branches` LOOKUP TABLE joined by
-     `consignments.branch_id`. WATCH OUT: in that table the short code is
-     stored in `branches.name`, and `branches.code` is NULL on all 4 rows.
-     Join and select `branches.name`, never `branches.code` (which returns
-     blanks for everything). The four rows are id 1='QE', 2='QCL', 3='QEN',
-     4='QBL-II'. VERIFIED consignment split: QCL 51, QBL-II 30, QE 6, QEN 4.
-   - CONFIRMED short-code -> full-name aliases (match the intent, not just
-     literal text; compare case-insensitively and ignore hyphen variants):
+     `consignments.branch_id`. WATCH OUT: the short code is stored in
+     `branches.NAME`, and `branches.CODE` is VERIFIED NULL on every row.
+     `WHERE b.code = 'QE'` therefore matches NOTHING and silently reports
+     zero consignments for a branch that has plenty — OBSERVED FAILURE:
+     "how many consignments are in QE in imports?" was answered "there are
+     no consignments recorded for branch code 'QE'" when the true figure is
+     34. ALWAYS filter and select `branches.name`.
+     The five rows are id 1='QE', 2='QCL', 3='QEN', 4='QBL-II', 5='QH'.
+     VERIFIED consignment split across the 206 consignments: QCL 68,
+     QBL-II 61, QEN 40, QE 34, QH 2, and 1 with no branch_id match (which
+     is why the join must be LEFT — rule 22).
+       SELECT b.name AS branch, COUNT(*) AS consignments
+       FROM consignments c LEFT JOIN branches b ON b.id = c.branch_id
+       WHERE b.name = 'QE'
+     CRITICAL — `branches.name` HOLDS THE SHORT CODE ITSELF ('QE'), NOT the
+     full company name. Do NOT expand the user's code to a full legal name
+     here: `WHERE b.name = 'Qadri Engineering (Pvt) Ltd.'` matches ZERO rows
+     and wrongly reports that the branch has no consignments. That
+     short-code -> full-name expansion below applies ONLY to the
+     stock/issuance/store_requisition `branch` TEXT columns, never to the
+     `branches` lookup table. In the imports domain the user's code is
+     already the stored value — match it as typed (case-insensitively).
+     Do NOT add a status filter to a plain "how many consignments are in
+     QE" question — that asks for the total, not the open ones. Only
+     exclude 'Order Cancelled'/'Arrived at Works' when the user asks for
+     ongoing/open ones (rule 9).
+   - CONFIRMED short-code -> full-name aliases. THESE APPLY ONLY WHEN THE
+     TARGET COLUMN STORES FULL COMPANY NAMES — i.e. `stock.branch`,
+     `issuance.branch`, `store_requisition.branch`. Expand the user's code
+     only for those (match the intent, not just literal text; compare
+     case-insensitively and ignore hyphen variants):
        * qe, qen   -> 'Qadri Engineering (Pvt) Ltd.'
        * qcl       -> 'Qadcast (Pvt) Ltd.'
        * qb2, qbl  -> 'Qadbros Engineering (Pvt) Ltd.'
        * qbl-ii    -> 'Qadri Brothers (Pvt.) Ltd. (Unit-II)'
-     Codes with NO confirmed mapping ('IOL', 'QE-II') — do NOT guess one;
-     answer within the domain the code appears in and note the limitation.
+     DO NOT APPLY THEM to `purchases_data.branch` or to `branches.name` —
+     both of those already store the SHORT CODE, so expanding it to a full
+     name matches nothing. Pick the direction from the column you are
+     filtering: full-name columns get the expansion, short-code columns get
+     the code as typed.
+     Codes with NO confirmed mapping ('IOL', 'QE-II', 'QH') — do NOT guess
+     one; answer within the domain the code appears in and note the
+     limitation.
    - A DEPARTMENT is NOT a branch — do not filter a department name on the
      `branch` column, and do not iterate over branches when the user names a
      department. `issuance.department` (49 distinct values) and
@@ -1133,6 +1163,25 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      concepts separate; never report "not carried" as "out of stock".
    - `stock.available_qty` is the reliable "available" figure; do not assume
      it equals stock_qty - hold_qty (other reservation logic exists).
+   - "ON HOLD" / "HELD" / "BLOCKED" IS `hold_qty > 0` — NOT
+     `available_qty <= 0`. These are two different states and the counts
+     differ by more than an order of magnitude, so confusing them produces a
+     badly wrong number:
+       * ON HOLD  = `hold_qty > 0`      — VERIFIED 98 rows company-wide
+         (Qadbros 94, Qadcast 4, Qadri Engineering 0, Unit-II 0), 31,271.5
+         units held in total. Physically present, but reserved/blocked.
+       * OUT OF STOCK = `available_qty <= 0` — VERIFIED 1,407 rows. Nothing
+         usable on the shelf, which is a different problem entirely.
+     OBSERVED FAILURE: "how many items are on hold in Qadcast?" was answered
+     "265", which is the `available_qty <= 0` count for that branch. The
+     true on-hold count at Qadcast is FOUR rows (item_codes 14981-60,
+     14976-60, 614-60, 849-60). Never answer an on-hold question with an
+     availability filter.
+     For "how much is on hold" (a quantity rather than a count) use
+     `SUM(hold_qty)`, and carry items.default_unit_of_measurement per rule 5.
+     Note most rows have `hold_qty = 0` rather than NULL, so
+     `hold_qty IS NOT NULL` is NOT a hold filter — it matches every row
+     (VERIFIED 1,791 of 1,791 at Qadcast). The filter must be `> 0`.
 
 17b. "HOW MANY" QUESTIONS — return the ROWS, not a bare COUNT.
    - The UI shows the query result as a browsable table, so a bare
