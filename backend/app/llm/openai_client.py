@@ -100,7 +100,12 @@ _GENERATION_REMINDER_FRESH = (
     "`COUNT(*) OVER () AS total_matching_rows`, so the reader gets the "
     "actual list and the true total. Keep a plain aggregate ONLY for a "
     "scalar money/quantity measure (SUM/AVG of value, an average of "
-    "days)."
+    "days). CRITICAL: `COUNT(*) OVER ()` belongs ONLY on a query that "
+    "returns one row PER RECORD. If your query collapses to a single row "
+    "(it selects COUNT/SUM/AVG and nothing per-record), do NOT add "
+    "`total_matching_rows` — there it is always the meaningless value 1, "
+    "counting output rows rather than records, and it produces nonsense "
+    "like 'the total matching rows is 1'."
 )
 _GENERATION_REMINDER_FOLLOWUP = (
     "\n\nThis message is the user's reply to your own earlier "
@@ -319,6 +324,68 @@ class OpenAIClient:
                 ),
             }
         ] + transcript + [{"role": "user", "content": question}]
+        return self._chat(messages, temperature=0.2).strip()
+
+    def explain_empty_result(
+        self,
+        question: str,
+        system_prompt: str,
+        sql: str,
+        transcript: list[dict] | None = None,
+    ) -> str:
+        """Explain a query that ran fine but matched NOTHING.
+
+        A zero-row result is frequently the REAL answer ("no shafts arrived
+        in July"), not a failed search — but it was previously answered with
+        a fixed boilerplate paragraph that told the user nothing about their
+        own question and implied the system had failed. The full business
+        rules are passed in as the system prompt so the model can reason
+        about WHY the set is empty (a status that excludes everything, a
+        period with no activity, a domain that doesn't carry the entity) and
+        state the adjacent fact that IS true.
+        """
+        if not self.available:
+            raise RuntimeError("OpenAI unavailable.")
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    system_prompt
+                    + "\n\nThe query below ran successfully against the real "
+                    "database and matched ZERO rows. Your job is NOT to write "
+                    "new SQL — it is to explain that empty result to the "
+                    "user.\n"
+                    "- An empty result is often the TRUE answer. Say so "
+                    "plainly and directly: 'No shafts arrived in July 2026.'\n"
+                    "- Then give the adjacent fact that makes it useful, "
+                    "using the verified figures in the business rules above "
+                    "where they cover this case — what WAS due in that "
+                    "period and its current state, or when the last real "
+                    "occurrence was.\n"
+                    "- If the rules show the query itself was built wrongly "
+                    "(filtered a column that is entirely NULL, matched an "
+                    "import item through the items master, used a date "
+                    "column that holds no future dates), say what the right "
+                    "basis would be, in business terms.\n"
+                    "- NEVER invent a number that is not in the business "
+                    "rules above. If you genuinely cannot tell why it is "
+                    "empty, say the filters matched nothing and name the one "
+                    "most likely reason — do not list every possibility.\n"
+                    "- Do not apologise, do not mention SQL, tables or "
+                    "columns by name, and do not tell the user to rephrase "
+                    "unless there is genuinely nothing else to say."
+                ),
+            },
+            *strip_sql_notes(transcript or []),
+            {
+                "role": "user",
+                "content": (
+                    f"User question: {question}\n\n"
+                    f"Query that returned zero rows:\n{sql}\n\n"
+                    "Explain the empty result."
+                ),
+            },
+        ]
         return self._chat(messages, temperature=0.2).strip()
 
     def repair_sql(

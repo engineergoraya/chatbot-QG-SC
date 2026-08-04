@@ -249,6 +249,27 @@ def execute_sql(state: ChatState) -> ChatState:
         }
 
     if outcome.row_count == 0:
+        # A zero-row result is frequently the REAL answer ("no shafts
+        # arrived in July"), so explain it against the business rules
+        # instead of returning boilerplate that reads like a system
+        # failure. Falls back to the fixed text if the LLM is unavailable.
+        empty_answer = (
+            "The query ran successfully but returned no matching rows. "
+            "That does NOT necessarily mean the item/supplier/branch is "
+            "absent from the database — most often the filters were too "
+            "narrow, or the query required a table that only covers part "
+            "of the catalogue. Try naming the item slightly differently, "
+            "or ask about its usage/purchase history instead."
+        )
+        try:
+            empty_answer = get_client().explain_empty_result(
+                state["llm_question"],
+                build_system_prompt(introspect()),
+                state["safe_sql"],
+                transcript=state.get("transcript") or [],
+            )
+        except Exception:
+            pass
         return {
             **state,
             "exec_ok": True,
@@ -256,16 +277,7 @@ def execute_sql(state: ChatState) -> ChatState:
             "rows": [],
             "row_count": 0,
             "truncated": False,
-            "answer": (
-                "The query ran successfully but returned no matching rows. "
-                "That does NOT necessarily mean the item/supplier/branch is "
-                "absent from the database — most often the filters were too "
-                "narrow, or the query required a table that only covers part "
-                "of the catalogue (e.g. `stock` has no row for about two "
-                "thirds of the items that have issuance history). Try naming "
-                "the item slightly differently, or ask about its usage/"
-                "purchase history instead."
-            ),
+            "answer": empty_answer,
             "confidence": confidence.EMPTY_RESULT,
             "done_reason": "empty",
         }

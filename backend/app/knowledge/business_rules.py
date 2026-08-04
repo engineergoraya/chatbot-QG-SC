@@ -789,6 +789,37 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      load), so any trend on it collapses to a single point. Do not use
      `po_date` either; it is 100% NULL (rule 7). The coalesced date gives 19
      distinct months.
+   - "ARRIVED" — there is NO actual-arrival-date column on `consignments`.
+     This trips up every "what arrived in <month>" question, so be explicit:
+       * `effective_date` is VERIFIED 100% NULL on all 206 rows — useless.
+       * `eta_works` is an ESTIMATE (the 'E' is estimated), and it stays an
+         estimate even on rows that have since arrived. It is populated on
+         118 of the 119 'Arrived at Works' rows, so it is the best available
+         proxy for WHEN something arrived — but say in the answer that it is
+         the planned works-arrival date, not a recorded actual.
+       * `gate_out_date` (94 of 206 rows) is the closest thing to a real
+         event — the container leaving the port — and it is usually a few
+         days BEFORE arrival at works. Use it when the user asks about port
+         clearance/gate-out specifically.
+     ARRIVAL IS A STATUS, NOT A DATE. "What arrived in July 2026" means
+       current_status = 'Arrived at Works' AND eta_works within July 2026
+     BOTH conditions are required. Filtering on the date ALONE is the common
+     mistake: 19 consignments have a July-2026 eta_works but NONE of them
+     have arrived — 13 are still 'In Transit', 4 'Under Custom Clearance',
+     1 'Under De-Stuffing', 1 'Under Production', 1 'Ready Awaiting Sailing'.
+     A date-only filter would report all of those as "arrived", which is
+     false; a status-only filter would ignore the month entirely.
+   - WHEN AN "ARRIVED IN <PERIOD>" QUERY RETURNS ZERO ROWS, that is a REAL
+     and useful finding — do not treat it as a failed search. Say what
+     actually happened instead, using the two adjacent facts that are always
+     available: (1) what WAS due in that period and what state it is in now,
+     and (2) when the last genuine arrival was.
+     VERIFIED WORKED EXAMPLE — "tell me the shafts arrived in July 2026":
+     the honest answer is that NO shafts arrived in July 2026; 26 shaft
+     lines were due that month (ETAs 10, 23 and 25 July) but are ALL still
+     'In Transit' and therefore now overdue; and the last shaft that
+     actually arrived did so on 2026-05-12. Never answer that one with a
+     bare "no matching rows".
    - For "next" / "upcoming" / "soonest" / "when will ... arrive" questions
      about a FUTURE event, filter the date column to `>= CURRENT_DATE` and
      ORDER BY it ASC — never return a past/overdue date for a "next" question.
@@ -1036,6 +1067,28 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      "orders/purchases", use purchases_data (local) unless the question is
      explicitly about imports/shipments/ETAs. When it could be either,
      query both and label which is which — do not join them.
+   - A ZERO COUNT FOR A NAMED SUPPLIER MEANS THE NAME DIDN'T RESOLVE — it
+     does NOT mean the supplier has no orders. Never answer "there are 0
+     orders from X" as a finding. VERIFIED FAILURE: "how many orders are
+     from AB traders in purchase?" returned COUNT = 0 and was reported as
+     "0 orders from AB Traders — no transactions recorded with this
+     supplier", stated at high confidence. In fact NO supplier is named
+     'AB Traders' at all; the name simply didn't match anything, and the
+     real near-matches were sitting right there: 'Al Basit Traders' (2
+     orders), 'AN Scrap Traders' (4), 'Ayyan Traders' (13).
+     So when a supplier filter yields zero, RETURN THE CANDIDATES INSTEAD OF
+     THE ZERO. Write the query so it cannot come back empty-handed: match
+     loosely on the distinctive token(s) and return the matching supplier
+     names with their order counts, e.g. for "AB traders"
+       SELECT supplier, COUNT(*) AS orders, SUM(amount) AS amount_pkr
+       FROM purchases_data
+       WHERE supplier ILIKE '%trader%'          -- the generic token
+          OR regexp_replace(lower(supplier),'[^a-z0-9]','','g') ILIKE '%ab%'
+       GROUP BY supplier ORDER BY orders DESC
+     then say plainly that no supplier is recorded under the exact name they
+     used, and name the 2-3 closest with their counts so they can pick. The
+     same applies to a named ITEM, BRANCH or CUSTOMER that resolves to
+     nothing — offer the near-matches, never assert absence from a zero.
    - The user's spelling rarely matches the stored value exactly. Prefer the
      most distinctive token. When the name has no distinctive token (generic
      words like Corporation/Traders/Trading/Industries/Enterprises), match
@@ -1116,6 +1169,17 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
    - This does NOT apply to a pure SCALAR MEASURE — a money/quantity total
      or average ("what is our inventory value?", "total purchase value",
      "average transit time", "average delay"). Those stay aggregates.
+     AND ON A SCALAR AGGREGATE, DO NOT ADD `COUNT(*) OVER ()` AT ALL. On a
+     query that already collapses to one row, that column is always the
+     meaningless value 1 — it counts the output rows, not the underlying
+     records. VERIFIED FAILURE: "how many shafts are in transit" returned
+     `COUNT(*) AS in_transit_lines, COUNT(*) OVER () AS total_matching_rows`
+     and the answer ended with "the total matching rows in the database for
+     this query is 1, meaning the results are based on a single set of
+     criteria" — a confusing non-statement sitting next to the real figure
+     of 26. `total_matching_rows` belongs ONLY on a query that returns one
+     row PER RECORD. Never select it alongside a COUNT/SUM/AVG, and never
+     narrate it in the answer as if it were a business quantity.
    - Nor does it apply when the user explicitly asks for just a number
      ("just give me the count").
 
@@ -1271,6 +1335,11 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
 19b. A COUNT OF ZERO IS NOT THE SAME AS "NONE" — distinguish "none matched"
     from "this domain doesn't track that at all". Getting this wrong
     produces a confident, plausible, completely false answer.
+   - This applies to a COUNT THAT COMES BACK 0 just as much as to an empty
+     result set. `SELECT COUNT(*) ... WHERE supplier ILIKE '%ab traders%'`
+     returns ONE row containing zero — a "successful" result that then gets
+     narrated as a confident finding. Treat a zero count for a NAMED entity
+     as an unresolved name (rule 15), not as evidence of absence.
    - Before reporting any zero count for a named entity (an item family, a
      supplier, a branch) against a domain, ask whether that entity has ANY
      rows in that domain at all. If it has none, the honest answer is "X
@@ -1514,6 +1583,13 @@ fixed template:
 - If a row carries `tie_count` greater than 1 (see rule 23), say how many
   entities share that ranked value rather than presenting the shown rows as
   a strict top-N.
+- NEVER narrate `total_matching_rows` as if it were a business quantity. It
+  is plumbing: it carries the true row count past the display cap, so use it
+  to state HOW MANY records matched, and nothing else. If it equals 1 on an
+  aggregate query it means nothing at all — say nothing about it. Lines like
+  "the total matching rows is 1, meaning the results are based on a single
+  set of criteria" or "the query returned a single row, confirming the data
+  is complete" are meaningless filler and must never appear.
 - The result preview you're given is a SAMPLE — the note on it tells you the
   true row count when it's larger than what's shown. The user already sees
   every matching row in a table in the app UI. Never say the data is

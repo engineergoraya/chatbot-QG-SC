@@ -20,6 +20,36 @@ function ConfidenceBadge({ value }) {
 
 const TABLE_ROW_CAP = 100;
 
+// Column names that hold numeric-LOOKING values that are not quantities —
+// item/HS/PO/ref/batch/container codes, grade specs (e.g. a spec of "1085"
+// is a grade, not a count). Comma-grouping these would misrepresent an
+// identifier as a magnitude, so any column whose name contains one of these
+// fragments is left as plain text even if every value in it parses as a
+// number. Fragments, not exact names, so this also covers prefixed/aliased
+// variants (item_code, hs_codes.code, po_number, gd_number, ref_no,
+// batch_no, container_no, licence_no, ntn_strn, default_specification, ...).
+const NON_NUMERIC_COLUMN_HINTS = ["code", "number", "no", "spec", "grade", "ntn", "strn", "licence"];
+
+function isIdentifierColumn(column) {
+  const c = column.toLowerCase();
+  return NON_NUMERIC_COLUMN_HINTS.some((hint) => c.includes(hint));
+}
+
+const PURE_NUMBER_RE = /^-?\d+(\.\d+)?$/;
+
+function formatCellValue(value, column) {
+  if (value === null || value === undefined) return "—";
+  if (isIdentifierColumn(column)) return String(value);
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value.toLocaleString("en-US", { maximumFractionDigits: 3 });
+  }
+  if (typeof value === "string" && PURE_NUMBER_RE.test(value.trim())) {
+    return Number(value).toLocaleString("en-US", { maximumFractionDigits: 3 });
+  }
+  return String(value);
+}
+
 function ResultTable({ columns, rows }) {
   if (!columns?.length || !rows?.length) return null;
   const shown = rows.slice(0, TABLE_ROW_CAP);
@@ -37,7 +67,7 @@ function ResultTable({ columns, rows }) {
           {shown.map((row, i) => (
             <tr key={i}>
               {columns.map((c) => (
-                <td key={c}>{row[c] === null || row[c] === undefined ? "—" : String(row[c])}</td>
+                <td key={c}>{formatCellValue(row[c], c)}</td>
               ))}
             </tr>
           ))}
