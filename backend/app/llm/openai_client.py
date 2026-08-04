@@ -27,7 +27,7 @@ import re
 import time
 
 from app import config
-from app.knowledge.business_rules import RESPONSE_STYLE
+from app.knowledge.business_rules import ANALYTIC_STRUCTURE, RESPONSE_STYLE
 from app.session_store import SQL_NOTE_MARKER, strip_sql_notes
 
 try:
@@ -315,8 +315,11 @@ class OpenAIClient:
                     "conversation. If the answer genuinely isn't in the history above, "
                     "say so plainly and invite them to ask the data question directly. "
                     "Professional and direct.\n\n"
-                    "FORMAT: bullet points are the default shape rather than a "
-                    "paragraph of prose, but keep it light — use however many "
+                    "FORMAT: plain bullets. Do NOT use the four Descriptive/"
+                    "Diagnostic/Forecasting/Prescriptive headings — this is a "
+                    "question about the conversation, not a data answer, and "
+                    "earlier turns showing that structure must not be copied. "
+                    "Keep it light — use however many "
                     "bullets the answer needs (one is fine), aim for about a "
                     "sentence each as a guideline, and add a short bold markdown "
                     "heading only when the answer has a clear main topic or "
@@ -379,7 +382,12 @@ class OpenAIClient:
                     "most likely reason — do not list every possibility.\n"
                     "- Do not apologise, do not mention SQL, tables or "
                     "columns by name, and do not tell the user to rephrase "
-                    "unless there is genuinely nothing else to say."
+                    "unless there is genuinely nothing else to say.\n"
+                    "- FORMAT: plain bullets only. Do NOT use the four "
+                    "Descriptive/Diagnostic/Forecasting/Prescriptive "
+                    "headings here — they are for answers that HAVE data, "
+                    "and this one does not. Earlier turns in the "
+                    "conversation may show that structure; do not copy it."
                 ),
             },
             *strip_sql_notes(transcript or []),
@@ -451,7 +459,8 @@ class OpenAIClient:
                 "role": "system",
                 "content": (
                     "You explain a demand forecast to Qadri Group supply-chain "
-                    "staff.\n\n" + RESPONSE_STYLE + "\n"
+                    "staff.\n\n" + RESPONSE_STYLE + "\n\n"
+                    + ANALYTIC_STRUCTURE + "\n"
                     "- The forecast JSON below is the ONLY source for any number, "
                     "method name, or confidence claim — never invent or adjust a "
                     "figure yourself, and never silently switch to a different "
@@ -508,7 +517,8 @@ class OpenAIClient:
                 "role": "system",
                 "content": (
                     "You explain live database query results to Qadri Group "
-                    "supply-chain staff.\n\n" + RESPONSE_STYLE + "\n"
+                    "supply-chain staff.\n\n" + RESPONSE_STYLE + "\n\n"
+                    + ANALYTIC_STRUCTURE + "\n"
                     "- Earlier turns of this conversation may be shown before the "
                     "current question, for CONTINUITY only (so you can refer back "
                     "naturally to what was already discussed). Every NUMBER you "
