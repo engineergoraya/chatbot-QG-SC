@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { sendMessage, checkHealth } from "./api";
 import SupplyChainBackground from "./SupplyChainBackground";
+import AnswerBody from "./AnswerBody";
 import "./App.css";
 
 const EXAMPLE_QUESTIONS = [
@@ -97,7 +98,7 @@ function Message({ role, text, sql, confidence, columns, rows }) {
   return (
     <div className={`bubble-row ${role}`}>
       <div className={`bubble ${role}`}>
-        <p>{text}</p>
+        {role === "assistant" ? <AnswerBody text={text} /> : <p>{text}</p>}
         {role === "assistant" && (confidence !== undefined || sql || hasTable) && (
           <div className="bubble-meta">
             {confidence !== undefined && <ConfidenceBadge value={confidence} />}

@@ -620,3 +620,95 @@ body {
   color: var(--text-dim);
   cursor: not-allowed;
 }
+
+/* ---- Assistant answer body (rendered markdown, see AnswerBody.jsx) ----
+   The four analysis headings (Descriptive / Diagnostic / Forecasting /
+   Prescriptive) need to read as real section headers with clear separation,
+   and bullets need real hanging indents — previously the whole answer was
+   printed as one pre-wrapped text blob. */
+.answer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.answer-body > *:first-child {
+  margin-top: 0;
+}
+
+.answer-heading {
+  margin: 0.55rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--panel-border);
+}
+/* No leading gap above the very first heading in a message. */
+.answer-body > .answer-heading:first-child {
+  margin-top: 0;
+}
+
+.answer-text {
+  margin: 0;
+  color: var(--text-light);
+}
+
+/* "N/A" is a deliberate absence, not an answer — mute it so a section with
+   nothing to say reads as intentionally empty at a glance. */
+.answer-na {
+  margin: 0;
+  color: var(--text-dim);
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.answer-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.answer-list > li {
+  position: relative;
+  color: var(--text-light);
+}
+/* Custom marker: a small teal dot, vertically centred on the first line. */
+.answer-list > li::before {
+  content: "";
+  position: absolute;
+  left: -0.85rem;
+  top: 0.55em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--teal);
+  opacity: 0.85;
+}
+/* Nested bullets: hollow marker, tighter spacing. */
+.answer-list .answer-list {
+  margin-top: 0.35rem;
+  gap: 0.28rem;
+}
+.answer-list .answer-list > li::before {
+  background: transparent;
+  border: 1px solid var(--slate);
+  width: 4px;
+  height: 4px;
+}
+.answer-body strong {
+  color: #fff;
+  font-weight: 650;
+}
+
+/* Separate the confidence/table/SQL controls from the answer body — with the
+   four-heading layout the meta row otherwise sits flush against the last
+   bullet and reads as another line of the answer. */
+.answer-body + .bubble-meta {
+  margin-top: 0.85rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--panel-border);
+}
