@@ -50,10 +50,96 @@ _DEFAULT_FORECAST_HORIZON = 3
 _MAX_FORECAST_HORIZON = 24
 
 
+def _distinct_value_counts(columns, rows) -> dict:
+    """How many DISTINCT values each column holds across ALL retrieved rows.
+
+    This is the deterministic half of the fix for the "117 types of shafts"
+    class of error. The answer stage only ever sees a 30-row SAMPLE of the
+    result, so when a 117-row item listing came back it had nothing to
+    distinguish "117 products" from "117 SKU variants of 19 products" — and
+    narrated the row count as a type count. Counting distinct values here,
+    in code over the full retrieved set, gives the composer the real figure
+    to quote instead of an inference from the sample (see
+    business_rules.ANSWER_GROUNDING, which instructs it to use this map).
+
+    Values are keyed by `str()` so unhashable column values (a JSON/array
+    column) can't raise — an exact distinct count on those is not needed,
+    only the order of magnitude.
+    """
+    if not rows or not columns:
+        return {}
+    counts = {}
+    for col in columns:
+        seen = set()
+        for row in rows:
+            value = row.get(col)
+            if value is None:
+                continue
+            seen.add(str(value))
+        counts[col] = len(seen)
+    return counts
+
+
+_TRUE_TOTAL_COLUMNS = ("total_matching_rows", "total_orders", "total_types")
+
+
+def _true_total(rows) -> int | None:
+    """The `COUNT(*) OVER ()` total the SQL carried past the row cap.
+
+    Returns None unless every row agrees on it — a window count is constant by
+    construction, so a disagreement means the column is something else and
+    must not be quoted as the total.
+    """
+    if not rows:
+        return None
+    for col in _TRUE_TOTAL_COLUMNS:
+        values = {row.get(col) for row in rows}
+        if len(values) == 1:
+            value = values.pop()
+            if isinstance(value, int) and not isinstance(value, bool):
+                return value
+    return None
+
+
 def _preview(columns, rows, max_rows_shown: int = 30) -> str:
     total = len(rows or [])
     shown = rows[:max_rows_shown] if rows else []
-    payload = {"columns": columns, "row_count": total, "rows": shown}
+    payload = {
+        "columns": columns,
+        "row_count": total,
+        # Spelled out because `row_count` was repeatedly narrated as a
+        # business quantity ("117 types of shafts", "4 orders").
+        "row_count_means": (
+            "the number of RESULT ROWS returned by the query — NOT a count of "
+            "products, types, orders or shipments, and never a physical "
+            "quantity. Check the grain of the table before naming what these "
+            "rows are."
+        ),
+        "rows": shown,
+    }
+    if total > 1:
+        payload["distinct_values"] = _distinct_value_counts(columns, rows)
+        payload["distinct_values_means"] = (
+            "distinct non-null values per column, counted over all "
+            f"{total} returned rows (not just the sample). Use this to "
+            "describe the result honestly: if a name column has far fewer "
+            "distinct values than there are rows, the rows are variants of "
+            "those names, not that many separate things."
+        )
+    # `total_matching_rows` is the window-function count the SQL carries
+    # specifically so the TRUE total survives the 200-row cap (rule 17b). It
+    # was easy to overlook sitting inside the row dicts: an RFD-delay listing
+    # capped at 200 rows was narrated "200 item lines with delays" when the
+    # real total was larger. Lifting it to the top level makes it the obvious
+    # number to quote.
+    true_total = _true_total(rows)
+    if true_total is not None and true_total != total:
+        payload["true_total_matching_rows"] = true_total
+        payload["true_total_means"] = (
+            f"the query matched {true_total} rows in total; only {total} came "
+            "back because of the display cap. State THIS number as the count, "
+            f"never {total}."
+        )
     if total > len(shown):
         # Without this, explain() only sees `len(shown)` actual row dicts and
         # can misread the situation as data being cut off / unavailable — the

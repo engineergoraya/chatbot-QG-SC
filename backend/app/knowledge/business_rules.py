@@ -21,16 +21,25 @@ items.specs -> items.default_specification, items.uom ->
 items.default_unit_of_measurement, items.item_category -> items.category;
 group_name and material_standard no longer exist).
 
-Three verified rules are especially load-bearing:
+These verified rules are especially load-bearing:
 
   1. Issuance total_price is authoritative and must NOT be recomputed.
-     Confirmed live: 617 of 19,644 issuance rows have total_price that does
+     Confirmed live: 4,467 of 100,780 issuance rows have total_price that does
      NOT equal quantity * unit_price (weight-billed items bill on weight,
      which the table does not store) — so recomputing is wrong for them.
 
   2. Purchase supplier-delay = purchase - required_d (days), computed live.
-     Both dates are populated on all 2,778 rows; purchases_data.po_date is
-     100% NULL and must never be used as a date.
+     Both dates are populated on all 68,298 rows. So is `po_date` — it was
+     empty on an earlier load and the rules said never to use it; re-verified
+     against the current data it is populated on every row and is the ORDER
+     date (rule 3). `ppc_store` is the opposite story: it is now populated on
+     only 2,778 of 68,298 rows, so any average built on it covers 4% of the
+     table (rule 3).
+
+  2b. A `purchases_data` row is a PO LINE, not an order: 68,298 lines but only
+     23,131 distinct po_numbers. "How many orders" is COUNT(DISTINCT
+     po_number) everywhere, in the SQL and in the wording of the answer
+     (rule 3 and the COUNTING block).
 
   3. Reorder level and lead time are DERIVED, not stored — the ab_items
      table is gone and stock.reorder_level is empty on all 6,070 rows. Rule
@@ -77,40 +86,113 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
 1. ISSUANCE VALUE — total_price is authoritative.
    - The `issuance.total_price` column already holds the correct issued value
      for each line. USE IT DIRECTLY.
-   - NEVER compute issued value as `quantity * unit_price`. VERIFIED: 617 of
-     the 19,644 issuance rows have a total_price that does NOT match
+   - NEVER compute issued value as `quantity * unit_price`. VERIFIED: 4,467 of
+     the 100,780 issuance rows have a total_price that does NOT match
      quantity * unit_price — those are weight-billed items whose real formula
      is `weight * unit_price`, and the issuance table stores neither weight
      nor UOM, so any recomputation would be wrong for them.
    - To total issuance value, SUM(total_price). To total issued quantity,
      SUM(quantity). Do not mix the two.
+   - VERIFIED scale: 100,780 rows covering 6,507 distinct item_codes, dated
+     2022-12-01 to 2026-07-28. Total issued value PKR 5,160,712,430 all-in,
+     or PKR 5,044,984,406 excluding held rows (rule 2) — the excl-held figure
+     is the one to quote for "consumption", and state the window.
 
 2. ISSUANCE STATUS — 'HoldIssuence' and 'Hold' are NOT completed issuances.
-   - `issuance.status` has EXACTLY three verified values: 'Issue' (19,239
-     rows), 'HoldIssuence' (373) and 'Hold' (32). There are no others.
+   - `issuance.status` has THREE real values — 'Issue' (99,513 rows),
+     'HoldIssuence' (1,194) and 'Hold' (72) — plus exactly ONE row where
+     status is NULL. There are no others.
+     Note the SQL consequence: `status NOT IN ('HoldIssuence','Hold')` returns
+     99,513 rows, i.e. it drops the NULL row too (NULL NOT IN (...) is never
+     true). That is a harmless one-row difference here, but do not describe
+     that filter as "everything except held" — it is "confirmed issued only".
    - Unless the user explicitly asks about held/pending items, EXCLUDE held
      rows from "issued"/"consumption" totals:
      `WHERE status NOT IN ('HoldIssuence', 'Hold')`.
    - If the user asks specifically about held/pending issuances, filter TO
      those statuses instead.
 
-3. PURCHASE TIMING — purchases_data has THREE usable dates with distinct
-   meanings, and one that is entirely empty. Do not confuse them.
-     * ppc_store   = date the demand/requirement was raised (demand placed).
-     * required_d  = date the item is REQUIRED BY (a deadline).
-     * purchase    = date it was actually purchased.
-     * po_date     = VERIFIED 100% NULL on all 2,778 rows. NEVER use it,
-       never ORDER BY it, never filter on it — it will silently return
-       nothing. `po_number` IS populated (2,778 rows) and is fine as an
-       identifier; only the DATE is empty.
-   - All three usable dates are populated on all 2,778 rows. The purchase
-     dates span 2026-06-09 to 2026-07-09 — a ONE MONTH window. Say this
-     window in any answer that totals or ranks purchases; a user asking for
-     "last 6 months" of purchases is getting one month of real data.
+3. PURCHASE TIMING — purchases_data has FOUR usable dates with distinct
+   meanings. Do not confuse them.
+     * po_date    = date the PURCHASE ORDER was raised. RE-VERIFIED on the
+       current data load: populated on ALL 68,298 rows and consistent per
+       order (0 po_numbers carry more than one po_date), spanning 2022-05-09
+       to 2026-07-09. An earlier load had this column entirely empty and the
+       rules said never to use it — that is NO LONGER TRUE. It is now the
+       correct date for "when was this order placed", for grouping orders by
+       month, and for any question about ORDER timing.
+     * required_d = date the item is REQUIRED BY (a deadline). Populated on
+       all 68,298 rows.
+     * purchase   = date it was actually purchased. Populated on all 68,298
+       rows, spanning 2023-01-02 to 2026-07-09.
+     * ppc_store  = date the demand/requirement was raised (demand placed).
+       CAUTION — VERIFIED populated on only 2,778 of 68,298 rows (4%); the
+       rest are NULL. It is a leftover from an earlier partial load. Any
+       average or trend on it silently describes that 4% slice, so either
+       avoid it or say explicitly that the figure covers only the 2,778 rows
+       that carry a demand date. NEVER present a ppc_store-based lead time as
+       a company-wide figure.
+   - The three fully-populated dates cover DIFFERENT windows, and picking the
+     wrong one silently changes the answer:
+       * `po_date` spans FOUR YEARS, 2022-05-09 to 2026-07-09 — use it for
+         "when did we order".
+       * `purchase` spans 2023-01-02 to 2026-07-09 — use it for "when did we
+         actually buy / spend".
+     Name which date the answer is based on, and state the window it covers.
+     VERIFIED: AVG(purchase - po_date) = 2.88 days.
+     VERIFIED recent activity by po_date: the last 6 months hold 2,767 lines
+     worth PKR 328,809,435 — a small slice of the 68,298-line, PKR
+     11,098,647,007 total, so ALWAYS state the window rather than implying
+     the total is recent.
+   - A `purchases_data` ROW IS A PO LINE, NOT AN ORDER. One purchase order
+     covers several item lines, so counting rows overstates orders by ~3x.
+     VERIFIED: 68,298 lines but only 23,131 distinct `po_number` values
+     (average 2.95 lines per order, max 200).
+       * "how many ORDERS / POs / purchase orders" -> COUNT(DISTINCT
+         po_number). NEVER COUNT(*).
+       * "how many purchase LINES / items purchased" -> COUNT(*).
+     When either reading is plausible, return BOTH and label them, so the
+     answer can never present one as the other:
+         SELECT COUNT(DISTINCT po_number) AS orders,
+                COUNT(*)                  AS po_lines
+         FROM purchases_data WHERE <filter>
+     VERIFIED FAILURE: "how many orders are in QCL branch of supplier Al
+     Hatim Impex in purchases?" was answered "4 orders are recorded" from a
+     COUNT(*). The truth is ONE order (po_number QG/PO/2026062357) carrying 4
+     lines — 2 x Developer, 2 x Cleaner, PKR 178,000 total.
+   - Per-branch order counts DO NOT SUM to the company total: VERIFIED 2,627
+     po_numbers span more than one branch (and 1,638 span more than one
+     supplier). So per-branch COUNT(DISTINCT po_number) sums to 26,702 while
+     the true company-wide figure is 23,131. Never add branch-level order
+     counts together — recount over the whole filtered set instead.
+     VERIFIED lines/orders by branch: QE 25,980/7,047, QEN 20,208/7,871,
+     QCL 9,936/5,417, QB2 9,517/4,819, QBL 1,521/1,044, IOL 569/199,
+     QE-II 567/305.
+   - MODE OF PURCHASE is `mop`, and it has exactly FOUR verified values —
+     match them EXACTLY (they are title-case with these precise spellings),
+     never a paraphrase:
+       'On Credit'              46,693 lines / 15,205 orders
+       'By Cash'                16,720 lines /  5,464 orders
+       'On Advance'              4,838 lines /  2,700 orders
+       'Payment after Delivery'     47 lines /     30 orders
+     A user saying "by cash" / "cash purchases" means `mop = 'By Cash'`;
+     "on credit" / "credit purchases" means `mop = 'On Credit'`. Prefer
+     `mop ILIKE 'By Cash'` if unsure of case, but never invent 'Cash',
+     'CASH' or 'Cash Payment' — those match nothing.
+   - Line-level metrics (delay days, amount, qty, on-time %) are measured
+     PER LINE, because the dates and amounts live on the line. That is
+     correct — just call the sample "lines", never "orders", when the basis
+     is COUNT(*).
    - SUPPLIER DELAY (against the deadline) = purchase - required_d (days).
      Positive = late, negative/zero = on or before required date.
-     VERIFIED: 850 of 2,778 purchase lines are late; the overall average
-     delay is +1.40 days.
+     VERIFIED: 9,422 of 68,298 purchase LINES are late (52,510 early, 6,366
+     exactly on the required date). The overall average across all lines is
+     MINUS 4.78 days — i.e. purchases land EARLY on average, because 77% of
+     lines beat their deadline. Among the 9,422 LATE lines only, the average
+     is +17.73 days. Those are two very different figures and the sign
+     matters: never quote the all-line average as "the average delay", and
+     never describe a negative average as a delay at all — say purchases run
+     about 5 days early on average, and report the late subset separately.
      "Late"/"delayed" means delay > 0 unless the user gives a different
      threshold — this is a FILTER, not just a fact to mention afterward.
      Two DIFFERENT questions need two DIFFERENT queries — do not conflate
@@ -129,6 +211,38 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
          returned. This is the correct query for "which suppliers are
          delayed" — never return unfiltered averages (including negative
          ones) and label them all "delayed".
+         MEASURE IT IN DAYS, NOT AS A PERCENTAGE, and DO NOT ADD A RATE
+         COLUMN TO THIS QUERY AT ALL. Use exactly this SELECT list:
+           SELECT supplier,
+                  AVG(purchase - required_d) AS avg_delay_days,
+                  COUNT(*)                   AS lines_measured,
+                  COUNT(DISTINCT po_number)  AS orders
+           FROM purchases_data
+           WHERE purchase IS NOT NULL AND required_d IS NOT NULL
+           GROUP BY supplier
+           HAVING AVG(purchase - required_d) > 0
+           ORDER BY avg_delay_days DESC NULLS LAST
+         `lines_measured` is EVERY line in the average's basis, not the late
+         ones — name it that way so the answer cannot report it as "N late
+         lines". VERIFIED: 326 of the 976 suppliers have a positive average
+         delay, led by 'M.A.Tools' (+196.6 days over 5 lines) and 'Scantech
+         Hangzhou Co Ltd' (+193.0 over 1 line) — note how few lines those top
+         entries rest on, which is exactly why the line count must be shown
+         next to the average (rule 13). An on-time/late PERCENTAGE belongs to
+         the BEST/WORST scorecard question (rule 13), NOT here — adding one
+         invites the answer to contradict itself.
+         OBSERVED FAILURE, twice: the delayed list was built with
+         `AVG(CASE WHEN purchase > required_d THEN 1 ELSE 0 END) * 100 AS
+         on_time_pct`, which is the LATE percentage under an ON-TIME alias.
+         The answer read the figure straight off the alias — "the average
+         on-time percentage for these suppliers is 100%, indicating they have
+         not recorded any late deliveries" — about the 84 MOST delayed
+         suppliers in the company. The number was right and the sentence was
+         the exact opposite of the truth.
+         NEVER alias a late/delay rate as `on_time_pct` (or an on-time rate as
+         `delay_pct`). On-time is `purchase <= required_d`; late is
+         `purchase > required_d`. Name the column after the condition you
+         actually wrote — the answer stage trusts the alias.
    - PURCHASE ORDER STATUS is DERIVED, not stored — there is no status
      column on purchases_data. Use the company's own three buckets (the same
      ones the Purchases dashboard shows), tested in this order:
@@ -136,19 +250,24 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
        required_d < purchase     -> 'Delayed'    (purchased late)
        otherwise                 -> 'Completed'
        days_overdue = purchase - required_d, only when Delayed, else NULL
-     VERIFIED on this data: 0 Pending, 850 Delayed, 1,928 Completed. The
-     Pending bucket is EMPTY because every row has a purchase date — so do
-     not report "N orders are pending"; say none are outstanding.
+     VERIFIED on this data: 0 Pending, 9,422 Delayed, 58,876 Completed (all
+     line-level). The Pending bucket is EMPTY because every row has a
+     purchase date — so do not report "N orders are pending"; say none are
+     outstanding.
      ON-TIME PERCENTAGE excludes Pending by definition:
        on_time_pct = completed / (completed + delayed) * 100
-     VERIFIED: 1,928 / 2,778 = 69.4% on time.
+     VERIFIED: 58,876 / 68,298 = 86.2% of lines on time.
    - PROCUREMENT LEAD TIME (demand raised to purchase made) =
-     AVG(purchase - ppc_store) — a plain average of day-differences, on
-     `purchases_data`.
+     AVG(purchase - ppc_store) on `purchases_data` — VERIFIED 24.65 days, but
+     ONLY over the 2,778 rows that carry a ppc_store date. The other 65,520
+     rows are excluded automatically (NULL), so this is a 4% sample, NOT a
+     company-wide lead time. If you report it, say so in the same sentence
+     and give the row count alongside; if the user wants a whole-company
+     lead time, the `store_requisition` figure below is the better basis.
    - "LEAD TIME" MEANS TWO DIFFERENT THINGS — pick by which table the user
      is asking about, and NEVER mix the columns:
        * PURCHASING lead time, on `purchases_data`:
-         `AVG(purchase - ppc_store)` (the line above).
+         `AVG(purchase - ppc_store)` (the 4%-coverage line above).
        * STORE REQUISITION lead time, on `store_requisition` — this is what
          a bare "what is our lead time" / "average lead time for
          requisitions" / "how long do requisitions take" means, and it is
@@ -314,8 +433,8 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      apply to uom (see rule 16).
    - CRITICAL — NEVER DRIVE THIS QUERY OFF `stock` ALONE. `stock` is a
      PARTIAL snapshot, not a catalogue: VERIFIED, it holds rows for only
-     4,762 of the 27,719 catalogue items, and 933 of the 2,370 items that
-     have issuance history (39%) have NO stock row at all. Driving FROM
+     4,762 of the 27,749 catalogue items, and 3,794 of the 6,508 items that
+     have issuance history (58%) have NO stock row at all. Driving FROM
      stock (or INNER JOINing it) silently deletes those items and returns
      ZERO ROWS for them — which then gets reported as "the item may not
      exist", a WRONG answer about an item with real consumption.
@@ -541,7 +660,7 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      also SELECT `items.default_unit_of_measurement AS uom` and either show
      it as its own column or concatenate it onto the quantity (e.g. "150
      kg", "40 No.") — a bare number with no unit is a wrong/unusable answer
-     for a physical quantity. Note 1,895 of 27,719 items have a blank UOM;
+     for a physical quantity. Note 1,908 of 27,749 items have a blank UOM;
      show the quantity without a unit in that case rather than guessing one.
      Use LEFT JOIN, not INNER JOIN (rule 22).
      This is not optional polish — apply it by default to EVERY item-level
@@ -588,27 +707,41 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      the nested JSON/array types rule 24 forbids.
 
 6. BRANCH NAMES DIFFER ACROSS DOMAINS — four different vocabularies.
-   - `stock.branch` and `issuance.branch` use FULL company names and cover
-     EXACTLY these FOUR values (VERIFIED, no others):
-       'Qadri Engineering (Pvt) Ltd.'
-       'Qadcast (Pvt) Ltd.'
-       'Qadbros Engineering (Pvt) Ltd.'
-       'Qadri Brothers (Pvt.) Ltd. (Unit-II)'
+   - `stock.branch` and `issuance.branch` use FULL company names, and the two
+     lists are ALMOST the same but NOT identical:
+       `stock.branch` — EXACTLY these FOUR (VERIFIED, no others):
+         'Qadri Engineering (Pvt) Ltd.'         1,812 rows
+         'Qadcast (Pvt) Ltd.'                   1,791
+         'Qadbros Engineering (Pvt) Ltd.'       1,704
+         'Qadri Brothers (Pvt.) Ltd. (Unit-II)'   763
+       `issuance.branch` — those same four PLUS a FIFTH:
+         'Qadri Engineering (Pvt) Ltd.'         32,326 rows
+         'Qadbros Engineering (Pvt) Ltd.'       27,401
+         'Qadcast (Pvt) Ltd.'                   21,807
+         'Qadri Brothers (Pvt.) Ltd. (Unit-II)' 17,516
+         'Qadri Brothers (Pvt) Ltd.'             1,730  <- issuance ONLY
+     That fifth value is a DIFFERENT string from the Unit-II one (no
+     '(Unit-II)', no dot after 'Pvt') and it has NO stock rows at all. So a
+     consumption total and a stock total for "Qadri Brothers" do not cover the
+     same set — say which spelling(s) you included whenever both domains
+     appear in one answer.
      Match them with EXACT equality (`branch = '...'`), never
-     `ILIKE '%name%'`. If the user's branch doesn't equal one of these four,
+     `ILIKE '%name%'`. If the user's branch doesn't equal one of these values,
      there is NO stock/issuance data for it — say so plainly. Do NOT pick
      the closest-sounding name and answer with that instead.
    - `store_requisition.branch` uses the same full-name style but has SEVEN
-     values — the four above PLUS three more that exist ONLY here:
-     'Corporate Office Izmir' (492 rows), 'Qadri Brothers (Pvt) Ltd.' (284)
-     and 'Qadbros Engineering (Pvt) Ltd. (Unit-II)' (179). Note the last two
-     are NOT the same strings as the stock/issuance names — 'Qadri Brothers
-     (Pvt) Ltd.' has no '(Unit-II)' and no dot after 'Pvt'. Do not silently
-     merge them with their look-alikes; if a requisition total must line up
-     with a stock/issuance figure, say which spellings you included.
-   - `purchases_data.branch` uses SHORT CODES — VERIFIED seven values:
-     'QEN' (1,060 rows), 'QE' (913), 'QCL' (422), 'QB2' (299), 'QBL' (58),
-     'QE-II' (17), 'IOL' (9).
+     values — VERIFIED: 'Qadri Engineering (Pvt) Ltd.' (1,964 rows), 'Qadcast
+     (Pvt) Ltd.' (1,758), 'Qadri Brothers (Pvt.) Ltd. (Unit-II)' (1,349),
+     'Qadbros Engineering (Pvt) Ltd.' (1,049), plus three that exist only in
+     this domain: 'Corporate Office Izmir' (492), 'Qadri Brothers (Pvt) Ltd.'
+     (284) and 'Qadbros Engineering (Pvt) Ltd. (Unit-II)' (179). Note the last
+     two are NOT the same strings as the stock names. Do not silently merge
+     them with their look-alikes; if a requisition total must line up with a
+     stock/issuance figure, say which spellings you included.
+   - `purchases_data.branch` uses SHORT CODES — VERIFIED seven values, by
+     lines/orders: 'QE' (25,980/7,047), 'QEN' (20,208/7,871), 'QCL'
+     (9,936/5,417), 'QB2' (9,517/4,819), 'QBL' (1,521/1,044), 'IOL'
+     (569/199), 'QE-II' (567/305).
    - The imports domain uses a `branches` LOOKUP TABLE joined by
      `consignments.branch_id`. WATCH OUT: the short code is stored in
      `branches.NAME`, and `branches.CODE` is VERIFIED NULL on every row.
@@ -655,16 +788,17 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      limitation.
    - A DEPARTMENT is NOT a branch — do not filter a department name on the
      `branch` column, and do not iterate over branches when the user names a
-     department. `issuance.department` (49 distinct values) and
+     department. `issuance.department` (60 distinct values) and
      `store_requisition.department` (47) are free-standing org-unit columns.
      Match them directly with exact equality on the NAME the user gave.
-     Real issuance departments, most-used first: 'Production' (3,862),
-     'Fitter' (2,755), 'Workshop' (1,842), 'Fabrication' (1,167), 'Welding'
-     (1,126), 'Boring Section' (1,122), 'Maintenance' (880), 'Lathe Section'
-     (850), 'Maintenance (Shop Floor)' (699), 'CNC Machining' (585), 'Coupla
-     Section' (529), 'Electrical' (431), 'Melting' (425), 'LAB' (383),
-     'Quality Assurance' (354), 'Store' (339), 'Tool Room' (332),
-     'Administration' (312), 'Fetling' (233). This is not exhaustive; trust
+     Real issuance departments, most-used first (VERIFIED): 'Production'
+     (16,681), 'Fitter' (13,532), 'Workshop' (8,654), 'Welding' (7,144),
+     'Maintenance' (6,457), 'Fabrication' (6,365), 'Coupla Section' (3,703),
+     'H.F.F' (3,468), 'Machining' (3,181), 'Maintenance (Shop Floor)' (3,060),
+     'Lathe Section' (2,949), 'Boring Section' (2,696), 'CNC Machining'
+     (2,419), 'Quality Assurance' (2,007), 'Moulding' (1,974), 'Electrical'
+     (1,812), 'Tool Room' (1,748), 'Melting' (1,511), 'Store' (1,387). About
+     1,224 rows have no department recorded. This is not exhaustive; trust
      an exact match on the name the user gave rather than guessing a variant.
      NOTE: `logistics_consignments.department` is a DIFFERENT concept
      entirely — its values are business lines ('Sugar' 480, 'Cement' 330,
@@ -685,12 +819,11 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      report them, never ORDER BY them — treat any of them as "not recorded
      in this system" and say so if the user asks for it:
        * stock.reorder_level                    (all 6,070 rows)
-       * purchases_data.po_date                 (all 2,778 rows)
-       * consignments.foreign_total             (all 91)
-       * consignments.pkr_total                 (all 91)  <- import VALUE is
+       * consignments.foreign_total             (all 206)
+       * consignments.pkr_total                 (all 206) <- import VALUE is
          NOT stored; see rule 9 for what to do instead
        * consignments.incoterm, .works, .required_date, .po_date,
-         .requisition_date, .demurrage_or_detention_paid  (all 91)
+         .requisition_date, .demurrage_or_detention_paid  (all 206)
        * consignment_items.elc, .alc, .variance_absolute,
          .variance_percentage                   (all 161)
        * logistics_consignments.transportation_charges, .container_detention
@@ -710,8 +843,27 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
 
 8. IMPORTS, EXPORTS/LOGISTICS and TRUCKING ARE THREE SEPARATE DOMAINS —
    never join across them.
+   - PICK THE DOMAIN FROM THE QUESTION'S OWN WORDS, BEFORE WRITING ANYTHING.
+     This is the single most consequential choice in a shipment question,
+     because both domains have a `current_status` and a "sailing" concept, so
+     the wrong table returns plausible rows rather than an error:
+       * the words EXPORT, EXPORTS, CUSTOMER, OUTBOUND, DISPATCH, SHIPPED OUT,
+         a job/MO number, or a Pakistani ORIGIN city -> EXPORTS/LOGISTICS,
+         i.e. `logistics_consignments`. NEVER `consignments`.
+       * the words IMPORT, IMPORTS, SUPPLIER, LC, ETA, ETD, ARRIVING,
+         CLEARANCE, or a foreign ORIGIN COUNTRY -> IMPORTS, i.e.
+         `consignments`.
+     OBSERVED FAILURE: "how many export shipments are on water?" was answered
+     from `consignments WHERE current_status = 'In Transit'` and reported as
+     "19 export shipments are currently on water". Those 19 are INBOUND
+     IMPORTS. The real export answer is `logistics_consignments WHERE
+     current_status = 'On Water'` — VERIFIED 38 rows. Reporting one domain's
+     rows under the other domain's name is a wrong answer even though the SQL
+     ran clean, so when the user says "export", the table is settled: it is
+     `logistics_consignments`, whatever an example elsewhere in these rules
+     happens to show.
    - IMPORTS (inbound, foreign supplier -> Qadri): `consignments` (header,
-     91 rows) + `consignment_items` (161 lines) + `eta_revision_history`,
+     206 rows) + `consignment_items` (451 lines) + `eta_revision_history`,
      with `branches`, `suppliers`, `ports` and `clearing_agents` as ID
      lookups. This is the ONLY domain with a real item_code link.
    - EXPORTS/LOGISTICS (outbound, Qadri -> customer): `logistics_consignments`
@@ -751,7 +903,7 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      'On Road' and no 'Arrived at QFL'.
    - "On water" / "sailing" (inbound) means `current_status = 'In Transit'`
      — VERIFIED 19 consignments. Distinct from 'Ready Awaiting Sailing'
-     (still at origin, vessel not yet departed — 7 consignments).
+     (still at origin, vessel not yet departed — 9 consignments).
    - "Ongoing" / "in progress" / "currently" (not yet completed) means
      `current_status NOT IN ('Arrived at Works', 'Order Cancelled')` —
      VERIFIED 82 consignments. A cancelled order is NOT ongoing; a single
@@ -765,6 +917,23 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
        AND current_status NOT IN ('Arrived at Works', 'Order Cancelled')
      VERIFIED: 56 consignments match today. ORDER BY eta ASC (most overdue
      first); `CURRENT_DATE - eta` gives days overdue.
+     NEVER plain-JOIN `consignment_items` on a question that COUNTS
+     consignments. A consignment has several item lines, so the join fans one
+     shipment out into several rows and the count silently becomes a line
+     count. OBSERVED FAILURE: "which imports are overdue?" joined
+     consignment_items and returned 108 rows, which the answer reported as
+     "108 overdue imports identified" — the truth is 56 consignments (108 is
+     their item-line total). If the item names are wanted alongside, attach
+     them with a LEFT JOIN LATERAL + string_agg so the result stays ONE ROW
+     PER CONSIGNMENT (exactly as rule 17b's worked example does):
+       LEFT JOIN LATERAL (
+         SELECT string_agg(DISTINCT ci.item_name, ', ') AS items_on_board
+         FROM consignment_items ci WHERE ci.consignment_id = c.id
+       ) it ON TRUE
+     The same applies to every "how many shipments/imports/consignments"
+     question: the grain is `consignments`, and if a join to
+     `consignment_items` is unavoidable, count `COUNT(DISTINCT c.id)`, never
+     `COUNT(*)` (see the COUNTING block).
    - ETA SLIPPAGE has its own table: `eta_revision_history` — 138 revisions
      across 78 of the 206 consignments, `eta_type` always 'eta', with
      `previous_eta`, `new_eta` and `cause_of_revision`. VERIFIED average
@@ -808,17 +977,20 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      VERIFIED: that returns PKR 987,749,718.61 across 173 priced
      consignments. Keep the bare `GROUP BY c.id` form ONLY when the user
      genuinely wants a per-shipment breakdown, and label the rows as such.
-     The line currency is the consignment's own `currency` ('USD' 56, 'JPY'
-     12, 'EUR' 11, 'GBP' 2, NULL 10); if the user wants the un-converted
+     The line currency is the consignment's own `currency` — VERIFIED 'USD'
+     102, 'JPY' 57, 'EUR' 15, 'GBP' 3, NULL 29; if the user wants the
+     un-converted
      figure, GROUP BY c.currency and label each with its currency instead of
      summing across them.
    - MONTHLY IMPORT TRENDS must be grouped on `eta_works`, falling back to
      `etd`, then `eta`, then `cargo_readiness_date`
      (`COALESCE(eta_works, etd, eta, cargo_readiness_date)`). Do NOT use
-     `created_at` — VERIFIED all 91 rows share ONE created_at value (bulk
+     `created_at` — VERIFIED all 206 rows share ONE created_at value (bulk
      load), so any trend on it collapses to a single point. Do not use
-     `po_date` either; it is 100% NULL (rule 7). The coalesced date gives 19
-     distinct months.
+     `consignments.po_date` either — that one IS still 100% NULL on all 206
+     rows (rule 7), unlike `purchases_data.po_date`, which is now fully
+     populated (rule 3); do not carry one column's emptiness over to the
+     other. The coalesced date gives 19 distinct months.
    - "ARRIVED" — there is NO actual-arrival-date column on `consignments`.
      This trips up every "what arrived in <month>" question, so be explicit:
        * `effective_date` is VERIFIED 100% NULL on all 206 rows — useless.
@@ -903,6 +1075,22 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
        * EXPORTS (outbound): "on water"/"sailing" =
          `logistics_consignments.current_status = 'On Water'` (VERIFIED 38
          rows); the departure date is `etd_sailing_date`.
+         WORKED EXAMPLE — "how many export shipments are on water?" Use THESE
+         columns; do NOT copy rule 17b's import example, whose `c.etd` /
+         `c.eta` DO NOT EXIST on this table (OBSERVED FAILURE: exactly that
+         copy produced `column c.etd does not exist` three times in a row and
+         the question went unanswered):
+           SELECT c.id, c.customer_name, c.origin_country, c.pol, c.pod,
+                  c.etd_sailing_date, c.actual_arrival_date,
+                  c.shipping_line, c.order_type,
+                  COUNT(*) OVER () AS total_matching_rows
+           FROM logistics_consignments c
+           WHERE c.current_status = 'On Water'
+           ORDER BY c.etd_sailing_date NULLS LAST
+         The logistics header has NO eta, NO etd, NO supplier and NO
+         item_code. Its counterparty is `customer_name`, its item text lives
+         on `logistics_items.item_detail`, and its only arrival date is the
+         ACTUAL one.
      If the user's question doesn't make clear which direction they mean (no
      supplier/PO/origin-country context vs. no customer/export context), ask
      ONE clarifying question rather than guessing which domain to query.
@@ -990,7 +1178,7 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      'OutSourcing'); fulfilled/closed means status IN ('Issued',
      'Delivered', 'GatePass', 'PartialGatePass', 'VCDelivered',
      'VCPartialDelivered').
-   - `consignments.record_state` is 'draft' on ALL 91 rows — it carries no
+   - `consignments.record_state` is 'draft' on ALL 206 rows — it carries no
      information, never filter on it. Same for the `is_deleted` flags: no
      row in consignments, consignment_items or logistics_consignments is
      currently flagged deleted, so a `WHERE NOT is_deleted` filter is
@@ -1017,15 +1205,23 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      the result). If you rank on the raw rate without a minimum count, say
      explicitly that the top result has very few orders and may not be a
      meaningful comparison.
-     Worked example — "which supplier has the best on-time delivery?":
-       SELECT supplier, COUNT(*) AS orders,
+     Worked example — "which supplier has the best on-time delivery?" This
+     scorecard shape belongs ONLY to BEST/WORST/most-reliable questions. A
+     plain "which suppliers are delayed?" is the avg-delay-DAYS query in rule
+     3, not this one. On-time is measured per PO LINE, because the dates sit
+     on the line — so the sample column is `po_lines`, NOT `orders` (rule 3),
+     and the CASE tests `purchase <= required_d`, which is what makes the
+     `on_time_pct` alias truthful:
+       SELECT supplier,
+              COUNT(*)                     AS po_lines,
+              COUNT(DISTINCT po_number)    AS orders,
               AVG(CASE WHEN purchase <= required_d THEN 1 ELSE 0 END) * 100
                 AS on_time_pct
        FROM purchases_data
        WHERE purchase IS NOT NULL AND required_d IS NOT NULL
        GROUP BY supplier
        HAVING COUNT(*) >= 5
-       ORDER BY on_time_pct DESC, orders DESC
+       ORDER BY on_time_pct DESC, po_lines DESC
        LIMIT 1
 
 14. TIME WINDOW — ASK before assuming one; default to 6 months only if the
@@ -1084,9 +1280,16 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      answer so the reader knows what period the numbers cover.
 
 15. SUPPLIER MATCHING — two DIFFERENT supplier stores; check the right one.
-   - LOCAL PURCHASES: `purchases_data.supplier` is FREE TEXT — VERIFIED 194
-     distinct names (e.g. 'Ayyan Traders', 'Umer Enterprises' with 103
-     orders, 'Imran Taj'). There is no supplier id here.
+   - LOCAL PURCHASES: `purchases_data.supplier` is FREE TEXT — VERIFIED 976
+     distinct names. There is no supplier id here. Mind rule 3's grain: a row
+     is a LINE, an order is a distinct po_number. Biggest by line count:
+     'Qadbros Engineering Pvt Ltd' (7,016 lines / 988 orders — an INTERNAL
+     group company, not a third-party vendor; flag that if it tops a ranking),
+     'Unique Enterprise' (3,447/279), 'Qadri Hardware Store' (3,234/1,088),
+     'Umer Enterprises' (2,857/355), 'Malik Iqbal and Company' (2,171/818),
+     'Shanghai Hardware Mart' (1,803/388), 'Mansha Iron Store' (1,402/319),
+     'LOCAL MARKET' (1,287/859 — a placeholder for over-the-counter buying,
+     not a real supplier; say so rather than naming it as a top vendor).
    - IMPORTS: `consignments.supplier_id` -> the `suppliers` LOOKUP TABLE,
      VERIFIED 67 rows (e.g. 'Cukurova' Turkey,
      'SKF' Sweden, 'JC Resources' Korea, 'Foseco' UAE, many China). Join
@@ -1104,17 +1307,20 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      "0 orders from AB Traders — no transactions recorded with this
      supplier", stated at high confidence. In fact NO supplier is named
      'AB Traders' at all; the name simply didn't match anything, and the
-     real near-matches were sitting right there: 'Al Basit Traders' (2
-     orders), 'AN Scrap Traders' (4), 'Ayyan Traders' (13).
+     real near-matches were sitting right there: 'Ayyan Traders' (231 lines /
+     87 orders), 'Al Basit Traders' (175 / 67), 'AN Scrap Traders' (22 / 11).
      So when a supplier filter yields zero, RETURN THE CANDIDATES INSTEAD OF
      THE ZERO. Write the query so it cannot come back empty-handed: match
      loosely on the distinctive token(s) and return the matching supplier
      names with their order counts, e.g. for "AB traders"
-       SELECT supplier, COUNT(*) AS orders, SUM(amount) AS amount_pkr
+       SELECT supplier,
+              COUNT(DISTINCT po_number) AS orders,
+              COUNT(*)                  AS po_lines,
+              SUM(amount)               AS amount_pkr
        FROM purchases_data
        WHERE supplier ILIKE '%trader%'          -- the generic token
           OR regexp_replace(lower(supplier),'[^a-z0-9]','','g') ILIKE '%ab%'
-       GROUP BY supplier ORDER BY orders DESC
+       GROUP BY supplier ORDER BY po_lines DESC
      then say plainly that no supplier is recorded under the exact name they
      used, and name the 2-3 closest with their counts so they can pick. The
      same applies to a named ITEM, BRANCH or CUSTOMER that resolves to
@@ -1132,8 +1338,9 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
 16. UNITS (UOM) — governs OUTPUT/AGGREGATION only, NEVER a join or filter.
    - JOIN on item_code ONLY. NEVER compare uom in a JOIN or WHERE: uom
      strings are inconsistent across tables. VERIFIED —
-     `items.default_unit_of_measurement` uses 'No.' (17,426), 'kg' (5,201),
-     'Ft.' (1,368), 'Sets', 'Nos.', 'Ltr.', 'Pair' (and blank on 1,895),
+     `items.default_unit_of_measurement` uses 'No.' (17,427), 'kg' (5,206),
+     'Ft.' (1,376), 'Sets' (607), 'Nos.' (594), 'Ltr.' (406), 'Pair' (98),
+     'Packet' (48), 'Box' (15) — and blank on 1,908,
      while `consignment_items.unit_of_measurement` for the SAME items uses
      TEN spellings: 'Pcs' (233), 'Ton' (99), 'Kg' (36), 'Kgs' (31), 'Set'
      (23), 'Tons' (11), 'MT' (7), 'Pcs.' (6), 'Pc' (2), 'Pc.' (2). Note
@@ -1151,15 +1358,25 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      items, no duplicate item+branch pairs). "Out of stock" = stock rows
      with available_qty <= 0, counted PER ROW:
        SELECT COUNT(*) FROM stock WHERE available_qty <= 0
-     VERIFIED 1,407 such rows today; 4,663 rows have available_qty > 0.
-     Do NOT sum an item's branches together.
+     VERIFIED 1,407 such rows today, covering 1,160 DISTINCT item_codes;
+     4,663 rows have available_qty > 0. Do NOT sum an item's branches
+     together.
+     Because a row is item+branch, RETURN BOTH counts so the answer cannot
+     call one the other:
+       SELECT COUNT(*) AS out_of_stock_rows,
+              COUNT(DISTINCT item_code) AS out_of_stock_items
+       FROM stock WHERE available_qty <= 0
+     OBSERVED FAILURE: a bare COUNT(*) was narrated as "1,407 items are out
+     of stock — 1,407 item codes with available quantity of zero or less".
+     1,407 is the item–BRANCH row count; the item count is 1,160. Say "1,407
+     item–branch rows across 1,160 distinct items".
    - "In stock / on hand" = stock rows with available_qty > 0.
    - ONLY if the user clearly wants DISTINCT ITEMS with no stock ANYWHERE,
      use GROUP BY item_code HAVING SUM(available_qty) <= 0 instead — say
      which basis you used.
    - "Not stocked / not carried" means the item has NO stock row at all
      (`NOT EXISTS` against stock) — a different, much larger set: VERIFIED
-     22,957 of the 27,719 catalogue items have no stock row. Keep the two
+     22,987 of the 27,749 catalogue items have no stock row. Keep the two
      concepts separate; never report "not carried" as "out of stock".
    - `stock.available_qty` is the reliable "available" figure; do not assume
      it equals stock_qty - hold_qty (other reservation logic exists).
@@ -1197,9 +1414,13 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      Report the count from `total_matching_rows` (NOT from how many rows you
      can see — the result is capped, so counting visible rows would
      understate the real total and is a WRONG ANSWER).
-     Worked example — "how many imports are on water?" (note the LEFT joins
-     to the lookup tables per rule 22, and the aggregated item names per
-     rule 5 so the header row doesn't fan out):
+     Worked example — "how many IMPORTS are on water?" This example is
+     IMPORT-DOMAIN ONLY. Its `c.etd` / `c.eta` / `c.origin` / supplier join do
+     NOT exist on `logistics_consignments`, so do not reuse its shape for an
+     EXPORT question — rule 8 settles the domain and rule 12 carries the
+     export equivalent. (Note the LEFT joins to the lookup tables per rule 22,
+     and the aggregated item names per rule 5 so the header row doesn't fan
+     out into one row per item line):
        SELECT c.id, b.name AS branch, s.name AS supplier, c.origin,
               it.items_on_board, c.etd, c.eta, c.eta_works,
               COUNT(*) OVER () AS total_matching_rows
@@ -1215,6 +1436,18 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      Pick columns a supply-chain reader would actually want (an identifier,
      the item, the counterparty, a value, a date) — not every column, and
      never `SELECT *`.
+   - EVERY MULTI-ROW RESULT MUST CARRY A COLUMN THAT NAMES WHAT EACH ROW IS.
+     A list of bare measures is unusable and the answer cannot cite anything
+     from it. On an ITEM query that means `items.item_code` AND `items.name`
+     (plus `default_specification` when variants matter); on a stock query add
+     `stock.branch`, since the same item appears once per branch.
+     OBSERVED FAILURE: "what is the current stock of hardener?" selected only
+     `available_qty` and `default_unit_of_measurement`, so the answer was a
+     naked list — "1,100 kg, 320 kg, 70 units, 66 Ltr..." — with no way to
+     tell which hardener each figure belonged to, or at which branch. Two
+     different products (foundry vs paint hardener, see the ALIASES block)
+     were silently mixed into that list. Always select the identifying
+     columns, even when the user only asked "how much".
    - This does NOT apply to a pure SCALAR MEASURE — a money/quantity total
      or average ("what is our inventory value?", "total purchase value",
      "average transit time", "average delay"). Those stay aggregates.
@@ -1297,6 +1530,23 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      for ALL export/logistics shipments — there is NO overdue figure to
      compute, and inventing one from the sailing date is a WRONG ANSWER, not
      an approximation.
+     THE BAN COVERS THE FILTER FORM TOO, not just the subtraction. A WHERE
+     clause like `etd_sailing_date < CURRENT_DATE AND current_status NOT IN
+     (<some final statuses>)` is the same fallacy wearing a different hat: it
+     means "sailed already and not finished yet", which describes almost every
+     in-flight shipment, not a late one. OBSERVED FAILURE: "which export
+     shipments are delayed?" was answered with exactly that filter and
+     reported "88 export shipments are currently delayed" — a number with no
+     planned date behind it, and the list even included shipments whose status
+     was 'On Water' (i.e. sailing normally). There is no such thing as 88
+     delayed exports in this data.
+     WHAT TO DO for "which exports are late/delayed?": say plainly, in one
+     sentence, that no planned arrival date is recorded on the export side so
+     lateness cannot be computed — then give the nearest REAL measure and
+     label it honestly. The two honest substitutes are RFD delay from
+     `logistics_items` (`actual_rfd_date - planned_rfd_date`, a genuine
+     planned-vs-actual pair — see below) and elapsed transit time. Never
+     rename either one "delay".
    - Local purchase order "delayed" = `purchase > required_d` (rule 3). A
      row with no purchase date is still PENDING, not "on time".
    - Import shipment overdue: `eta < CURRENT_DATE AND current_status <>
@@ -1446,9 +1696,10 @@ VERIFIED BUSINESS RULES (these are facts about this data — follow them exactly
      that returns zero rows and looks like "no data" when the truth is "not
      carried in stock; here is its consumption rate". Always return the
      item's row and state which pieces were missing.
-   - This matters most for `stock` (only 4,762 of 27,719 items have a row)
+   - This matters most for `stock` (only 4,762 of 27,749 items have a row)
      and for the imports domain (287 distinct item_codes in
-     consignment_items, 65% of them TMPNL placeholders not in `items`).
+     consignment_items, 212 of them — 74% — TMPNL placeholders not in
+     `items`).
 
 21. PROJECTED STOCK "once the upcoming import arrives".
    - An item can have SEVERAL upcoming consignments, and a consignment can
@@ -1703,19 +1954,58 @@ see the ANSWER STRUCTURE block, which governs the overall shape.)
 
 
 COUNTING_SEMANTICS = """\
-COUNTING — "TYPES" vs "ITEM CODES" vs "QUANTITY" are THREE DIFFERENT
-questions. Decide which one was asked BEFORE writing any COUNT.
+COUNTING — A ROW IS NOT AN ENTITY. Before writing any COUNT, and before
+stating any count in an answer, name the GRAIN you are counting at. Every
+table in this database stores rows at a FINER grain than the business noun a
+user asks about, so `COUNT(*)` almost never answers a "how many X" question
+directly:
+
+  question asks about  | the row actually is         | count it as
+  ---------------------|-----------------------------|---------------------------
+  types of an item     | one item_code (SKU variant) | COUNT(DISTINCT items.name)
+  items / SKUs         | one item_code               | COUNT(*)
+  purchase orders      | one PO LINE                 | COUNT(DISTINCT po_number)
+  stock of an item     | one item_code + branch      | COUNT(*) per row (rule 17)
+  import shipments     | one consignment_item LINE   | COUNT(DISTINCT c.id)
+  imported quantity    | one line                    | SUM(quantity), with UOM
+  suppliers            | one free-text name          | COUNT(DISTINCT supplier)
+
+VERIFIED grain ratios today: 27,749 item_codes / 5,229 product names;
+68,298 PO lines / 23,131 orders; 451 import item lines / 206 consignments;
+6,070 stock rows / 4,762 items.
+
+If the phrasing genuinely allows both readings, SELECT BOTH counts under
+distinct labels (`orders` and `po_lines`, `total_types` and `variant_count`)
+rather than picking one silently. Two labelled numbers are always better than
+one ambiguous one.
+
+NEVER state the number of RESULT ROWS as though it were a count of business
+entities. "The query returned 117 rows" and "we have 117 types of shafts" are
+different claims, and the second one was WRONG (see the shaft case below).
+
+"TYPES" vs "ITEM CODES" vs "QUANTITY" are THREE DIFFERENT questions. Decide
+which one was asked BEFORE writing any COUNT.
 
 The item master holds MANY item_code variants per product name: VERIFIED
-27,719 item_code rows across only 5,225 distinct `items.name` values (5.3
+27,749 item_code rows across only 5,229 distinct `items.name` values (5.3
 variants per name — 'Round Bar' alone has 1,063 item codes, one per size;
 'Hex Bolt' 903; 'Plate' 560). So answering a TYPES question with a row count
 overstates it several-fold and reads as obviously wrong to anyone who knows
 the catalogue.
 
 * "how many TYPES / KINDS / VARIETIES of X" -> COUNT DISTINCT PRODUCT NAME,
-  not rows. Return one row per distinct items.name with its variant count,
-  so the reader sees both figures at once:
+  not rows. PREFER the plain two-scalar form — no GROUP BY, both figures on
+  one row, impossible to misread:
+      SELECT COUNT(DISTINCT i.name) AS total_types,
+             COUNT(*)               AS total_item_codes
+      FROM items i
+      WHERE <the X filter>
+  VERIFIED for shafts: 19 total_types across 117 total_item_codes. State
+  total_types as "the number of types" and total_item_codes as the variant
+  count. NEVER report the item_code count as the type count.
+  Add a GROUP BY only when the user wants the per-name BREAKDOWN, and then use
+  exactly this shape — one row per product name, the window function carrying
+  the number of names:
       SELECT i.name AS item_name,
              COUNT(*)          AS variant_count,
              COUNT(*) OVER ()  AS total_types
@@ -1723,9 +2013,19 @@ the catalogue.
       WHERE <the X filter>
       GROUP BY i.name
       ORDER BY variant_count DESC, i.name
-  State total_types as "the number of types", and say they span
-  SUM(variant_count) item codes in total. NEVER report the item_code count
-  as the type count.
+  TWO TRAPS in that grouped form, both of which produced wrong answers:
+    - NEVER select `COUNT(DISTINCT i.name)` inside a query GROUPED BY
+      `i.name`. It is ALWAYS 1 there (each group holds one name), so aliasing
+      it `total_types` reports "1 product type". The number of types in the
+      grouped form is `COUNT(*) OVER ()`, nothing else.
+    - NEVER group by a DIFFERENT dimension (category, branch, specification)
+      while still calling an aggregate `total_types` — each row becomes a
+      per-group figure that the answer then reads as a company total.
+      OBSERVED FAILURE: `COUNT(DISTINCT i.name) AS total_types ... GROUP BY
+      i.category` over the shaft family returned 6 rows and was narrated
+      "Total types: 4", where the true answer is 19. For a genuine
+      per-category split, select the category as its own column and name the
+      count `types_in_category`, never `total_types`.
 * "how many X" / "which X are there" (no "types") -> the item_code rows
   themselves, via rule 17b's listing pattern. These are SKU variants. If the
   number is much larger than the number of distinct names, say so ("117 item
@@ -1735,6 +2035,98 @@ the catalogue.
   items.default_unit_of_measurement — a different question again (rules 16
   and 17).
 """
+
+
+# The ANSWER stage sees only the result rows, not the business rules — which
+# is exactly how two verified wrong answers got produced. Both were narration
+# failures on CORRECT query results:
+#   * "give me the shafts table along with their specs" returned 117 correct
+#     rows and was narrated "117 types of shafts identified". The truth is 117
+#     item CODES across 19 product names (5 of them actual shaft material).
+#     When the user pushed back, the answer flipped to "19 distinct types"
+#     with the same 95% confidence — it had no rule to be right by.
+#   * "how many orders are in QCL branch of supplier Al Hatim Impex" returned
+#     COUNT(*) = 4 and was narrated "4 orders are recorded". The truth is ONE
+#     order carrying 4 lines.
+# Every rule below is therefore about what the numbers MEAN, not about how to
+# query. Split in two because two different stages need different halves:
+#   * GRAIN_RULES — what one row of each table IS. Needed by explain() AND by
+#     answer_conversationally(), which fields the user's push-back on a figure
+#     it already gave.
+#   * ANSWER_GROUNDING — GRAIN_RULES plus the bits that only make sense when
+#     a result preview is in front of you (`row_count`, `distinct_values`).
+#     Only explain() gets these; the conversational path sees no preview.
+# Both stay deliberately short — they are prepended to every call.
+GRAIN_RULES = """\
+WHAT ONE ROW IS, PER DOMAIN (see the COUNTING block for the full table). Never
+state a count of rows as a count of the business noun the user asked about:
+  * one `purchases_data` row = one PO LINE. An ORDER is a distinct
+    `po_number`. VERIFIED 68,298 lines across 23,131 orders company-wide, so
+    row counts overstate orders ~3x. Without a distinct-po_number count to hand,
+    do NOT state an order count at all — say how many purchase LINES matched,
+    and name the po_numbers if they are visible.
+  * one `items` row = one item_code (SKU variant), NOT a product type.
+    VERIFIED 27,749 item_codes across only 5,229 product names.
+  * one `stock` row = one item_code AT one branch, so a stock row count is
+    never an item count. VERIFIED 6,070 rows across 4,762 items; the 1,407
+    out-of-stock rows cover 1,160 distinct items.
+  * one `consignment_items` row = one line on a shipment, not a shipment.
+    VERIFIED 451 lines across 206 consignments — so a query that joins
+    consignments to their item lines returns LINES, and counting those rows
+    overstates the number of shipments.
+
+A NULL / absent quantity means NO STOCK ROW IN THE SNAPSHOT — the item is not
+carried in that snapshot. It does NOT mean out of stock, awaiting restock, on
+order, or in demand. VERIFIED: 22,987 of 27,749 catalogue items have no stock
+row at all, and only 1 of the 117 shaft item codes has one. Write "no stock
+row in the current snapshot (not carried)", and never infer demand, a pending
+order, or a restock from a blank.
+
+When the user CHALLENGES a figure ("that's not the types, that's the
+quantity"), do not simply adopt their reading. Re-derive the right number from
+the grain rules above, then state plainly which reading is correct and what
+the other number is. Switching from "117 types" to "19 types" at unchanged
+confidence is a worse failure than the original error, and producing a THIRD
+number is worse still.
+"""
+
+
+ANSWER_GROUNDING = (
+    """\
+READING THE RESULT CORRECTLY (the result rows are correct; describing them
+wrongly is still a wrong answer):
+
+- `row_count` IS THE NUMBER OF RESULT ROWS. It is not a count of products,
+  types, orders, shipments or units, and it is never a physical quantity.
+  Say "117 item codes" or "117 rows", never "117 types" and never
+  "a quantity of 117".
+- The result preview carries a `distinct_values` map giving, per column, how
+  many DISTINCT values the returned rows actually hold. USE IT before
+  describing any set. If `item_name` has 19 distinct values across 117 rows,
+  the honest sentence is "117 item codes spanning 19 product names" — never
+  "117 types". This map is computed from the real rows; trust it over your
+  own impression of the sample.
+- CHECK EACH COLUMN'S ALIAS AGAINST THE EXPRESSION THAT PRODUCED IT — the SQL
+  is shown to you, so use it. An alias is a label someone wrote, not a
+  guarantee. If they disagree, describe the EXPRESSION and say the column is
+  mislabelled; never repeat a figure under a name the SQL contradicts.
+  OBSERVED FAILURE: a column aliased `on_time_pct` was actually
+  `AVG(CASE WHEN purchase > required_d ...)` — the LATE percentage — and the
+  answer reported "100% on-time, suggesting no delays" about the most delayed
+  suppliers in the result. Same check for `orders` computed as `COUNT(*)` over
+  `purchases_data` (that is LINES), and for `total_types` computed as
+  `COUNT(DISTINCT name)` inside a query grouped BY that name (always 1).
+- Do not explain a pattern that is really an artefact of the FILTER. If the
+  query matched two different things (a name pattern OR a category, an item
+  family OR its accessories), say what was matched rather than reading
+  meaning into the mixture. Example: the shaft filter matches
+  `category = 'Shaft Material(Temp)'` (89 forging-material variants) OR
+  `name ILIKE '%shaft%'` (28 shaft-NAMED parts: lip seals, shaft locks, gear
+  shafts) — one set of 117 rows, but two unrelated kinds of thing.
+
+"""
+    + GRAIN_RULES
+)
 
 
 ITEM_NAME_ALIASES = """\
@@ -1828,8 +2220,8 @@ domain match `consignment_items.item_name` directly; everywhere else match
       not one set counted twice.
 
 * SCRAP — well covered in every domain; the import names are the messy ones.
-  Catalogue: `i.name ILIKE '%scrap%'` (99 items; 56 stock rows, 700 issuance
-  lines, 78 purchase lines).
+  Catalogue: `i.name ILIKE '%scrap%'` (98 items; 56 stock rows, 2,117 issuance
+  lines, 2,288 purchase lines).
   Imports (42 lines): match `ci.item_name ILIKE '%scrap%'` — the stored
   names are inconsistent in case and word order and some are multi-line:
   'Cast Iron Scrap' (20), 'SCRAP OF CAST IRON' (11), 'Manganese Steel
@@ -1839,15 +2231,15 @@ domain match `consignment_items.item_name` directly; everywhere else match
   specific phrase like 'Cast Iron Scrap' or you will miss 'SCRAP OF CAST
   IRON', which is the same material written the other way round.
 
-* COATING — catalogue `i.name ILIKE '%coating%'` (26 items, 6 stock rows,
-  129 issuance lines, only 1 purchase line).
+* COATING — catalogue `i.name ILIKE '%coating%'` (25 items, 6 stock rows,
+  705 issuance lines, 38 purchase lines).
   Imports (11 lines): 'Coating' (5), 'Zircon Coating' (3), plus 'Alcohol
   Based Magnesite/Silica andGraphite/Zirconia Coating' (1 each — note the
   missing space in 'andGraphite', so never match on that phrase).
   Match `ci.item_name ILIKE '%coating%'`.
 
-* RESIN — catalogue `i.name ILIKE '%resin%'` (19 items, 4 stock rows, 156
-  issuance lines, 9 purchase lines). Grades live in
+* RESIN — catalogue `i.name ILIKE '%resin%'` (17 items, 4 stock rows, 749
+  issuance lines, 96 purchase lines). Grades live in
   `items.default_specification` WITH punctuation: 'A-85' (16425-60), '1085'
   (24612-60), '103' (20065-60), 'CC 2085' (27125-60), 'A-85 / 103 / 1085'
   (26287-60) — so a grade search must strip punctuation on both sides
@@ -1912,13 +2304,17 @@ domain match `consignment_items.item_name` directly; everywhere else match
   "how many types of shafts", give the 5-material / 19-total split rather
   than a bare number, and never answer "117 types" — a planner asking about
   shafts means the forging material, not a 'Rotary Shaft Lip Seal'.
-  COVERAGE, verified across the whole 117-item shaft family: only ONE has a
-  stock row (18259-60), and — VERIFIED — ZERO of the 117 have any issuance
-  or purchase history under their CATALOGUE item_codes. The real shaft
-  activity lives in the IMPORT records, under the alias names and
-  placeholder TMPNL codes described in (b) above. That is why a
-  catalogue-code-based search finds almost nothing, and why finding nothing
-  must NEVER be reported as "we have no shafts".
+  COVERAGE, RE-VERIFIED on the current data load across the whole 117-item
+  shaft family: only ONE has a stock row (18259-60), but there IS now
+  catalogue-code activity — 37 issuance lines and 17 purchase lines across 12
+  orders. (An earlier load had ZERO of both; the rules used to say so, and
+  that is no longer true — do not refuse to query `issuance`/`purchases_data`
+  for shafts.) The activity is still THIN relative to the 117 codes, and the
+  bulk of real shaft movement remains in the IMPORT records under the alias
+  names and placeholder TMPNL codes described in (b) above. So: query
+  purchases/issuance for shafts normally, report what is genuinely there, and
+  when a catalogue-code search comes back small or empty, say the imports are
+  where the volume is rather than reporting "we have no shafts".
   CONSEQUENCES:
     - Query `items` as the anchor. If you touch `stock` AT ALL it MUST be
       `LEFT JOIN stock` — NEVER a plain/inner `JOIN stock`, and never
@@ -1930,10 +2326,11 @@ domain match `consignment_items.item_name` directly; everywhere else match
       exists in the catalogue) plus a LEFT-JOINed available_qty that will
       usually be NULL — answer "yes, N variants exist in the catalogue, but
       none carry a stock row", never "no".
-    - IMPORTS are the transactional angle with real shaft data (84 lines) —
-      but reach them via `consignment_items.item_name`, per (b). Do not send
-      a shaft question to `purchases_data`/`issuance` by catalogue item_code
-      and then report "no activity"; there is none under those codes.
+    - IMPORTS are the transactional angle with the most shaft data (84 lines)
+      — reach them via `consignment_items.item_name`, per (b). Catalogue-code
+      purchases/issuance now DO hold some shaft activity (17 purchase lines /
+      12 orders, 37 issuance lines), so query them when asked and report the
+      real figures; just don't present that thin slice as the whole picture.
 
 * ANY OTHER MULTI-WORD ITEM NAME (when no alias above matches). NEVER ILIKE
   the user's whole phrase against items.name — multi-word product names are

@@ -13,7 +13,7 @@ import re
 
 import pytest
 
-from app.db.introspect import Schema, Table
+from app.db.introspect import Column, Schema, Table
 from app.graph import guard
 from app.knowledge import coverage
 from app.knowledge import functions as function_registry
@@ -239,3 +239,260 @@ def test_resolver_stays_quiet_when_no_name_is_named(monkeypatch):
     )
     assert entity_resolver.find_candidates("what is our current available inventory value?") == []
     assert entity_resolver.describe_candidates("") is None
+
+
+# --- fabricated export "delay" (rule 19, enforced in code) -----------------
+#
+# `logistics_consignments` has no planned/expected arrival date, so export
+# lateness is not computable. The model repeatedly approximated it with
+# "already sailed AND not finished" and narrated the result as "88 export
+# shipments are currently delayed" — including shipments sailing normally.
+# Prompt text did not stop it; these tests pin the code-level ban.
+
+def _export_schema() -> Schema:
+    """Real columns, because the guard now validates column names too — a
+    column-less fake would make every qualified reference look unknown."""
+    return _schema_with_columns(
+        logistics_consignments=[
+            "id", "customer_name", "origin_country", "etd_sailing_date",
+            "actual_arrival_date", "current_status",
+        ],
+        logistics_items=[
+            "consignment_id", "item_detail", "planned_rfd_date", "actual_rfd_date",
+        ],
+        consignments=["id", "eta", "etd", "current_status"],
+    )
+
+
+def test_fabricated_export_delay_is_rejected():
+    sql = (
+        "SELECT c.id, c.customer_name, c.etd_sailing_date "
+        "FROM logistics_consignments c "
+        "WHERE c.current_status NOT IN ('Delivered', 'At QFL') "
+        "AND c.etd_sailing_date < CURRENT_DATE"
+    )
+    result = guard.validate(
+        sql, _export_schema(), question="which export shipments are delayed?"
+    )
+    assert not result.ok
+    assert "no planned arrival date" in result.reason.lower()
+    # The repair prompt must hand over a concrete, runnable rewrite — an
+    # earlier prose-heavy version lost the instruction and burned all three
+    # repair attempts on a query the model had previously fixed first try.
+    assert "actual_rfd_date - li.planned_rfd_date" in result.reason
+    assert "total_matching_rows" in result.reason
+
+
+def test_export_transit_time_is_not_blocked():
+    """The ban is on the fabricated delay, not on the table — transit time is
+    a legitimate measure over the same two date columns."""
+    sql = (
+        "SELECT AVG(actual_arrival_date - etd_sailing_date) AS transit_days "
+        "FROM logistics_consignments WHERE actual_arrival_date IS NOT NULL"
+    )
+    result = guard.validate(
+        sql, _export_schema(),
+        question="how long do our export shipments take in transit?",
+    )
+    assert result.ok, result.reason
+
+
+def test_rfd_delay_query_is_not_blocked():
+    """The substitute the rejection steers toward must itself pass."""
+    sql = (
+        "SELECT li.consignment_id, li.actual_rfd_date - li.planned_rfd_date AS rfd_delay_days "
+        "FROM logistics_items li WHERE li.actual_rfd_date IS NOT NULL"
+    )
+    result = guard.validate(
+        sql, _export_schema(), question="which export shipments are delayed?"
+    )
+    assert result.ok, result.reason
+
+
+def test_import_overdue_query_is_not_blocked():
+    """Imports DO have a planned date (`eta`), so their delay is real and the
+    check must not touch them."""
+    sql = (
+        "SELECT c.id, c.eta, CURRENT_DATE - c.eta AS days_overdue FROM consignments c "
+        "WHERE c.eta < CURRENT_DATE AND c.current_status <> 'Arrived at Works'"
+    )
+    result = guard.validate(
+        sql, _export_schema(), question="which imports are overdue?"
+    )
+    assert result.ok, result.reason
+
+
+def test_export_departure_filter_allowed_when_question_is_not_about_lateness():
+    """A plain "which exports sailed this year" legitimately filters on the
+    departure date — the check keys on the QUESTION as well as the SQL."""
+    sql = (
+        "SELECT c.id, c.etd_sailing_date FROM logistics_consignments c "
+        "WHERE c.etd_sailing_date < CURRENT_DATE"
+    )
+    result = guard.validate(
+        sql, _export_schema(), question="which export shipments have sailed?"
+    )
+    assert result.ok, result.reason
+
+
+# --- unknown qualified columns ---------------------------------------------
+#
+# The guard checked table names but not column names, so `column c.eta does
+# not exist` came back from the DATABASE and consumed one of only two repair
+# attempts. "how many export shipments are on water?" failed outright after
+# three attempts on `c.etd`. The check is alias-aware and deliberately only
+# rejects references it can prove wrong.
+
+def _schema_with_columns(**tables: list[str]) -> Schema:
+    return Schema(
+        tables={
+            name.lower(): Table(
+                name=name,
+                kind="BASE TABLE",
+                columns=[Column(name=c, data_type="text", nullable=True) for c in cols],
+            )
+            for name, cols in tables.items()
+        }
+    )
+
+
+def test_unknown_qualified_column_is_rejected_with_the_real_columns():
+    schema = _schema_with_columns(
+        logistics_consignments=["id", "customer_name", "etd_sailing_date", "current_status"],
+    )
+    sql = "SELECT c.id, c.eta FROM logistics_consignments c WHERE c.eta < CURRENT_DATE"
+
+    result = guard.validate(sql, schema, question="which exports are late?")
+
+    assert not result.ok
+    assert "c.eta" in result.reason
+    # The repair prompt needs the real columns, or it just guesses again.
+    assert "etd_sailing_date" in result.reason
+
+
+def test_existing_columns_pass():
+    schema = _schema_with_columns(
+        logistics_consignments=["id", "customer_name", "etd_sailing_date", "actual_arrival_date"],
+    )
+    sql = (
+        "SELECT c.id, c.customer_name, c.etd_sailing_date, c.actual_arrival_date "
+        "FROM logistics_consignments c"
+    )
+    assert guard.validate(sql, schema, question="list exports").ok
+
+
+def test_cte_and_derived_table_aliases_are_not_column_checked():
+    """A CTE's columns are defined by the CTE itself, not by any base table —
+    checking them would reject perfectly valid queries, so unbound aliases are
+    skipped entirely."""
+    schema = _schema_with_columns(
+        store_requisition=["item_code", "branch", "req_quantity", "prepare_date"],
+        stock=["item_code", "branch", "available_qty"],
+    )
+    sql = (
+        "WITH demand AS ("
+        "  SELECT item_code, branch, SUM(req_quantity) / 180.0 AS avg_daily"
+        "  FROM store_requisition GROUP BY item_code, branch"
+        ") "
+        "SELECT s.item_code, d.avg_daily FROM stock s "
+        "LEFT JOIN demand d ON d.item_code = s.item_code"
+    )
+    assert guard.validate(sql, schema, question="which items need reorder?").ok
+
+
+def test_lateral_subquery_alias_is_not_column_checked():
+    schema = _schema_with_columns(
+        consignments=["id", "current_status"],
+        consignment_items=["consignment_id", "item_name"],
+    )
+    sql = (
+        "SELECT c.id, it.items_on_board FROM consignments c "
+        "LEFT JOIN LATERAL ("
+        "  SELECT string_agg(DISTINCT ci.item_name, ', ') AS items_on_board "
+        "  FROM consignment_items ci WHERE ci.consignment_id = c.id"
+        ") it ON TRUE"
+    )
+    assert guard.validate(sql, schema, question="how many imports are on water?").ok
+
+
+def test_star_and_bare_table_qualification_are_handled():
+    schema = _schema_with_columns(purchases_data=["supplier", "po_number"])
+
+    assert guard.validate("SELECT p.* FROM purchases_data p", schema, question="q").ok
+    assert guard.validate(
+        "SELECT purchases_data.supplier FROM purchases_data", schema, question="q"
+    ).ok
+
+
+def test_table_with_no_known_columns_is_skipped():
+    """A schema entry carrying no column detail means "columns unknown", not
+    "this table has none" — rejecting every reference to it would break real
+    queries (and every column-less test fixture in this file)."""
+    schema = _schema("stock")  # no columns attached
+
+    assert guard.validate("SELECT s.branch FROM stock s", schema, question="q").ok
+
+
+# --- import grand total that forgot its outer SUM (rule 9, in code) --------
+
+def _import_schema() -> Schema:
+    return _schema_with_columns(
+        consignments=["id", "exchange_rate", "current_status", "branch_id"],
+        consignment_items=["consignment_id", "quantity", "unit_price", "item_name"],
+    )
+
+
+_ONE_STAGE = (
+    "SELECT c.id, SUM(ci.quantity * ci.unit_price) * MAX(c.exchange_rate) AS pkr_value "
+    "FROM consignments c JOIN consignment_items ci ON ci.consignment_id = c.id "
+    "WHERE ci.unit_price IS NOT NULL GROUP BY c.id"
+)
+
+_TWO_STAGE = (
+    "WITH per_consignment AS (" + _ONE_STAGE + ") "
+    "SELECT SUM(pkr_value) AS total_import_value_pkr, COUNT(*) AS consignments_priced "
+    "FROM per_consignment"
+)
+
+
+def test_import_total_without_outer_sum_is_rejected():
+    """One row per consignment reported as "what our imports are worth"
+    understates the answer ~13x (rule 9). Observed: 173 rows narrated as a
+    series of individual consignment values."""
+    result = guard.validate(
+        _ONE_STAGE, _import_schema(), question="what are our imports worth?"
+    )
+    assert not result.ok
+    assert "PER CONSIGNMENT" in result.reason
+    assert "WITH per_consignment" in result.reason, "must hand over the rewrite"
+
+
+def test_correct_two_stage_import_total_passes():
+    result = guard.validate(
+        _TWO_STAGE, _import_schema(), question="what are our imports worth?"
+    )
+    assert result.ok, result.reason
+
+
+def test_per_consignment_breakdown_request_is_allowed():
+    """The one-stage query IS the right answer when the user asked for the
+    per-shipment rows — the check keys on the question's intent."""
+    for question in (
+        "show me the value of each import consignment",
+        "what is the value per shipment?",
+        "give me a breakdown of import value by consignment",
+    ):
+        result = guard.validate(_ONE_STAGE, _import_schema(), question=question)
+        assert result.ok, f"{question!r}: {result.reason}"
+
+
+def test_non_value_import_question_is_untouched():
+    """Grouping by consignment id is perfectly normal outside value questions."""
+    sql = (
+        "SELECT c.id, COUNT(*) AS lines FROM consignments c "
+        "JOIN consignment_items ci ON ci.consignment_id = c.id GROUP BY c.id"
+    )
+    result = guard.validate(
+        sql, _import_schema(), question="how many item lines does each import have?"
+    )
+    assert result.ok, result.reason

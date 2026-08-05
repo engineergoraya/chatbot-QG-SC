@@ -27,7 +27,13 @@ import re
 import time
 
 from app import config
-from app.knowledge.business_rules import ANALYTIC_STRUCTURE, RESPONSE_STYLE
+from app.knowledge.business_rules import (
+    ANALYTIC_STRUCTURE,
+    ANSWER_GROUNDING,
+    COUNTING_SEMANTICS,
+    GRAIN_RULES,
+    RESPONSE_STYLE,
+)
 from app.session_store import SQL_NOTE_MARKER, strip_sql_notes
 
 try:
@@ -105,7 +111,24 @@ _GENERATION_REMINDER_FRESH = (
     "(it selects COUNT/SUM/AVG and nothing per-record), do NOT add "
     "`total_matching_rows` — there it is always the meaningless value 1, "
     "counting output rows rather than records, and it produces nonsense "
-    "like 'the total matching rows is 1'."
+    "like 'the total matching rows is 1'. (4) COUNT AT THE RIGHT GRAIN per "
+    "rule 3 and the COUNTING block: a `purchases_data` row is a PO LINE, "
+    "not an order, so 'how many ORDERS/POs' is "
+    "`COUNT(DISTINCT po_number)` — NEVER `COUNT(*)`, which overstates "
+    "orders ~3.5x (2,778 lines vs 802 real orders). For an orders question "
+    "about a named supplier/branch, return one row PER ORDER plus both "
+    "counts, e.g. `SELECT po_number, min(purchase) AS purchased, "
+    "COUNT(*) AS lines, SUM(amount) AS amount_pkr, "
+    "COUNT(*) OVER () AS total_orders FROM purchases_data "
+    "WHERE ... GROUP BY po_number` — grouped by po_number, each row IS one "
+    "order, so the plain `COUNT(*) OVER ()` counts orders. Note Postgres "
+    "does NOT support `COUNT(DISTINCT x) OVER ()` ('DISTINCT is not "
+    "implemented for window functions'); use the grouped form above, or a "
+    "plain `COUNT(DISTINCT po_number)` with no OVER clause. The same "
+    "applies elsewhere: 'how many "
+    "shipments' is `COUNT(DISTINCT consignments.id)`, not a count of "
+    "`consignment_items` lines, and 'how many types' is "
+    "`COUNT(DISTINCT items.name)`, not a count of item_codes."
 )
 _GENERATION_REMINDER_FOLLOWUP = (
     "\n\nThis message is the user's reply to your own earlier "
@@ -145,6 +168,18 @@ _CONVERSATIONAL_ESCAPE = (
     "them is wrong twice over: it answers a question nobody asked, and when "
     "it returns no rows the user gets a canned \"no matching rows\" message "
     "in response to a perfectly clear question about your own reasoning.\n"
+    "IT ALSO INCLUDES A PUSH-BACK ON WHAT A FIGURE YOU ALREADY GAVE MEANS — "
+    "the user disputing the UNIT, GRAIN or LABEL of your own number rather "
+    "than asking for new data. Examples that MUST take this escape: \"but "
+    "117 are not the types, this is the quantity?\", \"isn't that the row "
+    "count?\", \"that's lines, not orders\", \"you counted item codes, not "
+    "products\". The figures are already in the conversation, so the "
+    "correction is a matter of naming them properly, not of querying again. "
+    "OBSERVED FAILURE: after a correct \"117 item codes spanning 19 product "
+    "names\", the push-back \"but 117 are not the types\" triggered a fresh "
+    "query that grouped by category and reported \"Total types: 4\" — a "
+    "third, newly-wrong number, in answer to a question that needed no "
+    "query at all.\n"
     "This does NOT apply to a follow-up that genuinely needs NEW data "
     "(\"what about the ones awaiting sailing?\", \"and their total "
     "value?\") — those are real data questions; write SQL for them as "
@@ -310,7 +345,17 @@ class OpenAIClient:
                     "so a zero there doesn't mean zero in reality' — rather than "
                     "defending the number. If, looking at the stored query, the "
                     "earlier answer now looks wrong or misleading, say that directly "
-                    "and briefly explain what would answer it properly.\n\n"
+                    "and briefly explain what would answer it properly.\n"
+                    "WHEN THE USER DISPUTES WHAT A FIGURE MEANT, settle it with "
+                    "the grain rules below rather than simply adopting their "
+                    "reading. Re-derive which number answers which question from "
+                    "the figures already in the conversation, then say plainly "
+                    "which label is correct and what the other number is. "
+                    "Capitulating (\"you're right, there are 19 types\") when the "
+                    "original figure was correctly labelled is as wrong as the "
+                    "original error would have been, and inventing a THIRD number "
+                    "is worse than either.\n\n"
+                    + GRAIN_RULES + "\n\n"
                     "Rules: never invent a figure that does not appear earlier in the "
                     "conversation. If the answer genuinely isn't in the history above, "
                     "say so plainly and invite them to ask the data question directly. "
@@ -509,6 +554,13 @@ class OpenAIClient:
         transit above" instead of repeating context the user already has.
         The result rows remain the ONLY source for new figures (see the
         instruction below): prior turns give continuity, never data.
+
+        ANSWER_GROUNDING and COUNTING_SEMANTICS are included deliberately.
+        This stage used to receive style rules ONLY, with no statement of
+        what the numbers MEAN — so a perfectly correct 117-row shaft listing
+        was narrated as "117 types of shafts", and a correct COUNT(*) of 4
+        purchase LINES as "4 orders". Both were answer-stage errors on valid
+        SQL, unreachable by any fix to SQL generation.
         """
         if not self.available:
             raise RuntimeError("OpenAI unavailable.")
@@ -518,6 +570,8 @@ class OpenAIClient:
                 "content": (
                     "You explain live database query results to Qadri Group "
                     "supply-chain staff.\n\n" + RESPONSE_STYLE + "\n\n"
+                    + ANSWER_GROUNDING + "\n\n"
+                    + COUNTING_SEMANTICS + "\n\n"
                     + ANALYTIC_STRUCTURE + "\n"
                     "- Earlier turns of this conversation may be shown before the "
                     "current question, for CONTINUITY only (so you can refer back "
