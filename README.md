@@ -333,3 +333,13 @@ Tables`/`Expected Logic` describe the *original planned* schema, which
 diverges from the live one in places — see `business_rules.py`). A full
 runner over all 100, with a pragmatic pass/fail definition, is proposed but
 intentionally not yet built pending sign-off on the grading approach.
+
+## Maintenance notes
+
+- The `chatbot_ro` role's SELECT grants are scoped with `ALTER DEFAULT
+  PRIVILEGES`, so newly created tables inherit read access automatically —
+  no manual re-grant needed after a data reload.
+- `backend/tests/test_prompt_figures_current.py` re-derives the VERIFIED
+  figures baked into `business_rules.py` from the live database and skips
+  cleanly when no database is reachable. Run it after any data reload to
+  catch stale prompt facts before they reach an answer.
