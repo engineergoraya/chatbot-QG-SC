@@ -7,6 +7,9 @@ and explaining the result in 3–4 professional, decision-oriented lines.
 
 **Stack:** React · FastAPI · LangGraph · OpenAI GPT-4o-mini · PostgreSQL
 
+See [CHANGELOG.md](CHANGELOG.md) for notable changes and
+[docs/MAINTENANCE.md](docs/MAINTENANCE.md) for the post-data-reload checklist.
+
 ## How it works
 
 ```
